@@ -20,6 +20,7 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody rigidBody;
     private Camera mainCamera;
+    private PlayerGrabState grabState;
 
     // Current smoothed velocity, interpolated each frame.
     private Vector3 smoothedVelocity;
@@ -32,8 +33,9 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        rigidBody = GetComponent<Rigidbody>();
+        rigidBody  = GetComponent<Rigidbody>();
         mainCamera = Camera.main;
+        grabState  = GetComponent<PlayerGrabState>();
 
         rigidBody.constraints = RigidbodyConstraints.FreezeRotation
                               | RigidbodyConstraints.FreezePositionY;
@@ -44,6 +46,8 @@ public class PlayerController : MonoBehaviour
     // Input is read in Update (frame-rate) for responsiveness.
     private void Update()
     {
+        if (grabState != null && grabState.IsGrabbed) return;
+
         ReadMovementInput();
         ReadMousePosition();
     }
@@ -51,6 +55,13 @@ public class PlayerController : MonoBehaviour
     // Physics and rotation are applied in FixedUpdate for stability.
     private void FixedUpdate()
     {
+        if (grabState != null && grabState.IsGrabbed)
+        {
+            smoothedVelocity = Vector3.zero;
+            rigidBody.linearVelocity = Vector3.zero;
+            return;
+        }
+
         ApplyMovement();
         ApplyRotation();
     }

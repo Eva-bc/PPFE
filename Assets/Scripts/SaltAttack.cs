@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-
 /// <summary>
 /// AOE salt attack triggered by right click.
 /// Damages all ghosts within a radius. GhostGreen takes increased damage via saltVulnerability.
@@ -15,7 +14,10 @@ public class SaltAttack : MonoBehaviour
     [SerializeField] private float cooldown = 3f;
     [SerializeField] private LayerMask ghostLayerMask;
 
-    // Normalized value 0–1 readable by a future UI gauge.
+    [Header("Visual Effects")]
+    [SerializeField] private SaltParticleEffect saltParticleEffect;
+
+    // Normalized value 0-1 readable by a future UI gauge.
     public float CooldownProgress => 1f - Mathf.Clamp01(cooldownRemaining / cooldown);
     public bool IsReady => cooldownRemaining <= 0f;
 
@@ -50,6 +52,8 @@ public class SaltAttack : MonoBehaviour
 
     private void PerformAttack()
     {
+        saltParticleEffect?.Play();
+
         int count = Physics.OverlapSphereNonAlloc(
             transform.position, radius, overlapResults, ghostLayerMask);
 

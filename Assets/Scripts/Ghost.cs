@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 /// <summary>
 /// Identifies the source of damage applied to a ghost.
@@ -67,7 +67,10 @@ public abstract class Ghost : MonoBehaviour
         direction.y = 0f;
         direction = direction.normalized;
 
-        rigidBody.MovePosition(rigidBody.position + direction * moveSpeed * Time.fixedDeltaTime);
+        rigidBody.linearVelocity = new Vector3(
+            direction.x * moveSpeed,
+            rigidBody.linearVelocity.y,
+            direction.z * moveSpeed);
     }
 
     // --- Damage ---
@@ -107,6 +110,17 @@ public abstract class Ghost : MonoBehaviour
     {
         OnDeath();
         Destroy(gameObject);
+    }
+
+    // --- Grab on Contact ---
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (IsDead) return;
+        if (!collision.gameObject.CompareTag("Player")) return;
+
+        if (collision.gameObject.TryGetComponent(out PlayerGrabState grabState))
+            grabState.Grab(this);
     }
 
     // --- Overridable Hooks ---
