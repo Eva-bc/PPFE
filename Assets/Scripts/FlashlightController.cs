@@ -3,8 +3,7 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Projects a cone of light toward the mouse cursor.
-/// Ghosts inside the cone take damage over time while left mouse button is held.
-/// The cone direction is driven by the mouse position, not the player's mesh rotation.
+/// Normal mode: left click held. UV mode: double-click, limited duration and cooldown.
 /// </summary>
 public class FlashlightController : MonoBehaviour
 {
@@ -16,6 +15,10 @@ public class FlashlightController : MonoBehaviour
     [SerializeField] private float damagePerSecond = 20f;
     [SerializeField] private LayerMask ghostLayerMask;
 
+    [Header("UV Mode")]
+    [SerializeField] private float uvDuration = 2.5f;
+    [SerializeField] private float uvCooldown = 5f;
+
     [Header("Gizmo")]
     [SerializeField] private int gizmoArcSegments = 20;
 
@@ -25,11 +28,17 @@ public class FlashlightController : MonoBehaviour
     // Direction from the player toward the mouse cursor, updated every frame.
     private Vector3 aimDirection;
 
-    // Whether the flashlight is currently active (readable by other systems).
     public bool IsActive { get; private set; }
-    // Aim direction readable by visual systems.
+    public bool IsUVActive { get; private set; }
     public Vector3 AimDirection => aimDirection;
 
+    // Double-click detection.
+    private const float DoubleClickThreshold = 0.25f;
+    private float lastClickTime = -1f;
+
+    // UV timers.
+    private float uvRemainingTime;
+    private float uvCooldownRemaining;
 
     private Camera mainCamera;
 
@@ -43,8 +52,9 @@ public class FlashlightController : MonoBehaviour
     {
         ReadMouseAim();
         ReadInput();
+        UpdateUVTimer();
 
-        if (IsActive)
+        if (IsActive || IsUVActive)
             DamageGhostsInCone();
     }
 
@@ -55,12 +65,85 @@ public class FlashlightController : MonoBehaviour
         Mouse mouse = Mouse.current;
         if (mouse == null) return;
 
-        IsActive = mouse.leftButton.isPressed;
+        // Normal flashlight: held click (only when UV is not active).
+        IsActive = mouse.leftButton.isPressed && !IsUVActive;
+
+        // Double-click detection for UV mode.
+        if (mouse.leftButton.wasPressedThisFrame)
+        {
+            float timeSinceLastClick = Time.time - lastClickTime;
+
+            if (timeSinceLastClick <= DoubleClickThreshold)
+                TryActivateUV();
+
+            lastClickTime = Time.time;
+        }
+    }
+
+    private void TryActivateUV()
+    {
+        if (IsUVActive || uvCooldownRemaining > 0f)
+        {
+            Debug.Log("[Flashlight] UV on cooldown.");
+            return;
+        }
+
+        IsUVActive = true;
+        uvRemainingTime = uvDuration;
+        uvCooldownRemaining = 0f;
+
+        Debug.Log("[Flashlight] UV mode activated.");
+    }
+
+    private void UpdateUVTimer()
+    {
+        if (IsUVActive)
+        {
+            uvRemainingTime -= Time.deltaTime;
+            if (uvRemainingTime <= 0f)
+            {
+                IsUVActive = false;
+                uvCooldownRemaining = uvCooldown;
+                Debug.Log("[Flashlight] UV mode ended. Cooldown started.");
+            }
+        }
+        else if (uvCooldownRemaining > 0f)
+        {
+            uvCooldownRemaining -= Time.deltaTime;
+        }
+    }
+
+    // --- Detection & Damage ---
+
+    private void DamageGhostsInCone()
+    {
+        int count = Physics.OverlapSphereNonAlloc(
+            transform.position, range, overlapResults, ghostLayerMask);
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider hit = overlapResults[i];
+            if (!IsInsideCone(hit.transform.position)) continue;
+
+            if (hit.TryGetComponent(out Ghost ghost))
+                ghost.TakeDamage(damagePerSecond * Time.deltaTime, isUV: IsUVActive);
+        }
     }
 
     /// <summary>
-    /// Casts a ray from the camera through the mouse position onto the ground plane
-    /// to determine the world-space aim direction of the flashlight.
+    /// Returns true if the world position falls within the flashlight cone.
+    /// </summary>
+    private bool IsInsideCone(Vector3 targetPosition)
+    {
+        Vector3 directionToTarget = targetPosition - transform.position;
+        directionToTarget.y = 0f;
+
+        float angle = Vector3.Angle(aimDirection, directionToTarget);
+        return angle <= coneAngle * 0.5f;
+    }
+
+    /// <summary>
+    /// Casts a ray from the camera through the mouse position onto the ground plane.
     /// </summary>
     private void ReadMouseAim()
     {
@@ -82,37 +165,6 @@ public class FlashlightController : MonoBehaviour
         }
     }
 
-    // --- Detection & Damage ---
-
-    private void DamageGhostsInCone()
-    {
-        int count = Physics.OverlapSphereNonAlloc(
-            transform.position, range, overlapResults, ghostLayerMask);
-
-        for (int i = 0; i < count; i++)
-        {
-            Collider hit = overlapResults[i];
-            if (!IsInsideCone(hit.transform.position)) continue;
-
-            if (hit.TryGetComponent(out Ghost ghost))
-                ghost.TakeDamage(damagePerSecond * Time.deltaTime);
-
-        }
-    }
-
-    /// <summary>
-    /// Returns true if the world position falls within the flashlight cone.
-    /// Uses the mouse aim direction rather than the player's mesh forward.
-    /// </summary>
-    private bool IsInsideCone(Vector3 targetPosition)
-    {
-        Vector3 directionToTarget = targetPosition - transform.position;
-        directionToTarget.y = 0f;
-
-        float angle = Vector3.Angle(aimDirection, directionToTarget);
-        return angle <= coneAngle * 0.5f;
-    }
-
     // --- Gizmo ---
 
 #if UNITY_EDITOR
@@ -122,17 +174,15 @@ public class FlashlightController : MonoBehaviour
         Vector3 direction = Application.isPlaying ? aimDirection : transform.forward;
         float halfAngle = coneAngle * 0.5f;
 
-        // Left and right boundary rays.
         Quaternion leftRot = Quaternion.AngleAxis(-halfAngle, Vector3.up);
         Quaternion rightRot = Quaternion.AngleAxis(halfAngle, Vector3.up);
         Vector3 leftEdge = leftRot * direction * range;
         Vector3 rightEdge = rightRot * direction * range;
 
-        Gizmos.color = Color.yellow;
+        Gizmos.color = IsUVActive ? Color.magenta : Color.yellow;
         Gizmos.DrawRay(origin, leftEdge);
         Gizmos.DrawRay(origin, rightEdge);
 
-        // Arc connecting the two boundary rays.
         Vector3 previousPoint = origin + leftEdge;
         for (int i = 1; i <= gizmoArcSegments; i++)
         {
@@ -144,8 +194,10 @@ public class FlashlightController : MonoBehaviour
             previousPoint = arcPoint;
         }
 
-        // Filled transparent disc to show the cone area.
-        Gizmos.color = new Color(1f, 1f, 0f, 0.08f);
+        Gizmos.color = IsUVActive
+            ? new Color(0.8f, 0f, 1f, 0.08f)
+            : new Color(1f, 1f, 0f, 0.08f);
+
         for (int i = 1; i <= gizmoArcSegments; i++)
         {
             float t = (float)i / gizmoArcSegments;
@@ -157,3 +209,4 @@ public class FlashlightController : MonoBehaviour
     }
 #endif
 }
+

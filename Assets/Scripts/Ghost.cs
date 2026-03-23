@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Abstract base class for all ghost types.
@@ -11,7 +11,7 @@ public abstract class Ghost : MonoBehaviour
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
-    // Multiplier applied to incoming flashlight damage (higher = more vulnerable).
+    // Multiplier applied to incoming normal flashlight damage.
     [SerializeField] private float lightVulnerability = 1f;
 
     [Header("Movement")]
@@ -22,6 +22,16 @@ public abstract class Ghost : MonoBehaviour
     private Transform playerTransform;
 
     public bool IsDead => currentHealth <= 0f;
+    public float CurrentHealth => currentHealth;
+    public float MaxHealth => maxHealth;
+
+    // Fired whenever health changes — GhostHealthBar subscribes to this.
+    public event System.Action<float, float> OnHealthChanged;
+
+
+
+    // Override to true in subclasses that are only hurt by UV light.
+    public virtual bool IsUVOnly => false;
 
     protected virtual void Awake()
     {
@@ -31,7 +41,6 @@ public abstract class Ghost : MonoBehaviour
         rigidBody.constraints = RigidbodyConstraints.FreezeRotation
                               | RigidbodyConstraints.FreezePositionY;
 
-        // The Player GameObject must be tagged "Player".
         GameObject player = GameObject.FindWithTag("Player");
         if (player != null)
             playerTransform = player.transform;
@@ -60,12 +69,19 @@ public abstract class Ghost : MonoBehaviour
     // --- Damage ---
 
     /// <summary>
-    /// Applies flashlight damage, scaled by this ghost's light vulnerability.
+    /// Applies flashlight damage based on the light type.
+    /// UV-only ghosts ignore normal light. Normal ghosts ignore UV light.
     /// </summary>
-    /// <param name="amount">Raw damage per second from the flashlight.</param>
-    public void TakeDamage(float amount)
+    /// <param name="amount">Raw damage per second.</param>
+    /// <param name="isUV">True if the damage source is UV light.</param>
+    public void TakeDamage(float amount, bool isUV = false)
     {
         if (IsDead) return;
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+
+        // UV-only ghost hit by normal light → no damage.
+        // Normal ghost hit by UV light → no damage.
+        if (IsUVOnly != isUV) return;
 
         float scaledDamage = amount * lightVulnerability;
         currentHealth -= scaledDamage;

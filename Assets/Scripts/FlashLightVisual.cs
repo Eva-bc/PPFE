@@ -2,8 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Drives the visual representation of the flashlight (Spot Light).
-/// Reads state from FlashlightController without modifying its logic.
-/// Attach this script to the Player. The Spot Light must be a child GameObject.
+/// Switches color between normal and UV mode based on FlashlightController state.
 /// </summary>
 public class FlashlightVisual : MonoBehaviour
 {
@@ -11,22 +10,20 @@ public class FlashlightVisual : MonoBehaviour
     [SerializeField] private Light spotLight;
     [SerializeField] private FlashlightController flashlightController;
 
-    [Header("Light Settings")]
+    [Header("Normal Light")]
     [SerializeField] private float lightIntensity = 3f;
     [SerializeField] private Color lightColor = new Color(1f, 0.95f, 0.8f);
 
-    // How fast the light fades in and out (higher = snappier).
-    [SerializeField] private float fadeSpeed = 12f;
+    [Header("UV Light")]
+    [SerializeField] private float uvIntensity = 4f;
+    [SerializeField] private Color uvColor = new Color(0.6f, 0f, 1f);
 
-    private float targetIntensity;
+    [SerializeField] private float fadeSpeed = 12f;
 
     private void Awake()
     {
         if (spotLight != null)
-        {
-            spotLight.color = lightColor;
             spotLight.intensity = 0f;
-        }
     }
 
     private void Update()
@@ -45,21 +42,24 @@ public class FlashlightVisual : MonoBehaviour
         Vector3 aim = flashlightController.AimDirection;
         if (aim.sqrMagnitude < 0.001f) return;
 
-        // Spot lights point along their local -Z, so we use LookRotation directly.
-        // We tilt slightly downward so the cone hits the ground plane.
         Vector3 downwardAim = aim + Vector3.down * 0.5f;
         spotLight.transform.rotation = Quaternion.LookRotation(downwardAim);
     }
-
     /// <summary>
-    /// Smoothly fades intensity in when active and out when released.
+    /// Fades intensity and switches color depending on whether UV mode is active.
+    /// Uses MoveTowards instead of Lerp to guarantee reaching the target value.
     /// </summary>
     private void FadeLight()
     {
-        targetIntensity = flashlightController.IsActive ? lightIntensity : 0f;
-        spotLight.intensity = Mathf.Lerp(
-            spotLight.intensity,
-            targetIntensity,
-            fadeSpeed * Time.deltaTime);
+        bool uvActive = flashlightController.IsUVActive;
+        bool normalActive = flashlightController.IsActive;
+
+        float targetIntensity = uvActive ? uvIntensity : normalActive ? lightIntensity : 0f;
+        Color targetColor = uvActive ? uvColor : lightColor;
+
+        float step = fadeSpeed * Time.deltaTime;
+        spotLight.intensity = Mathf.MoveTowards(spotLight.intensity, targetIntensity, step);
+        spotLight.color = Color.Lerp(spotLight.color, targetColor, step);
     }
+
 }
