@@ -31,6 +31,22 @@ public class FlashlightController : MonoBehaviour
     public bool IsActive { get; private set; }
     public bool IsUVActive { get; private set; }
     public Vector3 AimDirection => aimDirection;
+    // 0–1 : diminue pendant l'utilisation UV, remonte pendant le cooldown.
+    public float UVGaugeProgress
+    {
+        get
+        {
+            if (IsUVActive)
+                return Mathf.Clamp01(uvRemainingTime / uvDuration);
+
+            if (uvCooldownRemaining > 0f)
+                return 1f - Mathf.Clamp01(uvCooldownRemaining / uvCooldown);
+
+            return 1f;
+        }
+    }
+
+    public bool IsUVReady => !IsUVActive && uvCooldownRemaining <= 0f;
 
     // Double-click detection.
     private const float DoubleClickThreshold = 0.25f;
@@ -126,7 +142,10 @@ public class FlashlightController : MonoBehaviour
             if (!IsInsideCone(hit.transform.position)) continue;
 
             if (hit.TryGetComponent(out Ghost ghost))
-                ghost.TakeDamage(damagePerSecond * Time.deltaTime, isUV: IsUVActive);
+            {
+                DamageSource source = IsUVActive ? DamageSource.UVLight : DamageSource.Light;
+                ghost.TakeDamage(damagePerSecond * Time.deltaTime, source);
+            }
         }
     }
 
@@ -151,7 +170,8 @@ public class FlashlightController : MonoBehaviour
         if (mouse == null || mainCamera == null) return;
 
         Vector2 screenPosition = mouse.position.ReadValue();
-        Ray ray = mainCamera.ScreenPointToRay(new Vector3(screenPosition.x, screenPosition.y, 0f));
+        Ray ray = mainCamera.ScreenPointToRay(
+            new Vector3(screenPosition.x, screenPosition.y, 0f));
 
         Plane groundPlane = new Plane(Vector3.up, transform.position);
         if (groundPlane.Raycast(ray, out float distance))
@@ -209,4 +229,3 @@ public class FlashlightController : MonoBehaviour
     }
 #endif
 }
-

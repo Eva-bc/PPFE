@@ -1,10 +1,10 @@
 using UnityEngine;
 
-/// <summary>Fast ghost, low HP. Flashes on damage.</summary>
+/// <summary>Fast ghost. Low HP, highly vulnerable to salt.</summary>
 public class GhostGreen : Ghost
 {
-    protected override void OnDamageReceived(float amount)
+    protected override void OnDamageReceived(float amount, DamageSource source)
     {
-        Debug.Log($"[GhostGreen] {name} flinches — took {amount:F1} damage.");
+        Debug.Log($"[GhostGreen] {name} flinches — {source} hit for {amount:F1}.");
     }
 }

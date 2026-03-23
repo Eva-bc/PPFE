@@ -1,9 +1,14 @@
 ﻿using UnityEngine;
 
 /// <summary>
+/// Identifies the source of damage applied to a ghost.
+/// Each ghost type can define its own vulnerability per source.
+/// </summary>
+public enum DamageSource { Light, UVLight, Salt }
+
+/// <summary>
 /// Abstract base class for all ghost types.
-/// Handles HP, damage from the flashlight, movement toward the player, and death.
-/// Subclasses configure stats and can override behavior hooks.
+/// Handles HP, damage from any source, movement toward the player, and death.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public abstract class Ghost : MonoBehaviour
@@ -11,8 +16,9 @@ public abstract class Ghost : MonoBehaviour
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
-    // Multiplier applied to incoming normal flashlight damage.
+    [Header("Vulnerabilities")]
     [SerializeField] private float lightVulnerability = 1f;
+    [SerializeField] private float saltVulnerability = 1f;
 
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 3f;
@@ -25,10 +31,8 @@ public abstract class Ghost : MonoBehaviour
     public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
 
-    // Fired whenever health changes — GhostHealthBar subscribes to this.
+    // Fired after health changes — GhostHealthBar subscribes to this.
     public event System.Action<float, float> OnHealthChanged;
-
-
 
     // Override to true in subclasses that are only hurt by UV light.
     public virtual bool IsUVOnly => false;
@@ -69,25 +73,29 @@ public abstract class Ghost : MonoBehaviour
     // --- Damage ---
 
     /// <summary>
-    /// Applies flashlight damage based on the light type.
-    /// UV-only ghosts ignore normal light. Normal ghosts ignore UV light.
+    /// Applies damage from a given source, scaled by this ghost's vulnerability.
+    /// UV-only ghosts ignore Light. Salt bypasses the light system entirely.
     /// </summary>
-    /// <param name="amount">Raw damage per second.</param>
-    /// <param name="isUV">True if the damage source is UV light.</param>
-    public void TakeDamage(float amount, bool isUV = false)
+    /// <param name="amount">Raw damage amount.</param>
+    /// <param name="source">Source of the damage.</param>
+    public void TakeDamage(float amount, DamageSource source = DamageSource.Light)
     {
         if (IsDead) return;
-        OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
-        // UV-only ghost hit by normal light → no damage.
-        // Normal ghost hit by UV light → no damage.
-        if (IsUVOnly != isUV) return;
+        // Light immunity: UV-only ghosts ignore normal light and vice versa.
+        if (source == DamageSource.Light && IsUVOnly) return;
+        if (source == DamageSource.UVLight && !IsUVOnly) return;
 
-        float scaledDamage = amount * lightVulnerability;
+        float vulnerability = source == DamageSource.Salt ? saltVulnerability : lightVulnerability;
+        float scaledDamage = amount * vulnerability;
+
         currentHealth -= scaledDamage;
         currentHealth = Mathf.Max(currentHealth, 0f);
 
-        OnDamageReceived(scaledDamage);
+        // Fire event AFTER updating health so the bar reflects the new value.
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+
+        OnDamageReceived(scaledDamage, source);
 
         if (IsDead)
             Die();
@@ -104,9 +112,9 @@ public abstract class Ghost : MonoBehaviour
     // --- Overridable Hooks ---
 
     /// <summary>Called each time this ghost takes damage. Override to add reactions.</summary>
-    protected virtual void OnDamageReceived(float amount) { }
+    protected virtual void OnDamageReceived(float amount, DamageSource source) { }
 
-    /// <summary>Called just before the ghost is destroyed. Override to spawn VFX, notify GameManager, etc.</summary>
+    /// <summary>Called just before the ghost is destroyed. Override for VFX, events, etc.</summary>
     protected virtual void OnDeath()
     {
         Debug.Log($"[Ghost] {name} died.");
