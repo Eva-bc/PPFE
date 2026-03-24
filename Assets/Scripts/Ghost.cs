@@ -42,7 +42,8 @@ public abstract class Ghost : MonoBehaviour
         currentHealth = maxHealth;
         rigidBody = GetComponent<Rigidbody>();
 
-        rigidBody.constraints = RigidbodyConstraints.FreezeRotation
+        rigidBody.constraints = RigidbodyConstraints.FreezeRotationX
+                              | RigidbodyConstraints.FreezeRotationZ
                               | RigidbodyConstraints.FreezePositionY;
 
         GameObject player = GameObject.FindWithTag("Player");
@@ -55,6 +56,7 @@ public abstract class Ghost : MonoBehaviour
     protected virtual void FixedUpdate()
     {
         MoveTowardPlayer();
+        RotateTowardPlayer();
     }
 
     // --- Movement ---
@@ -71,6 +73,19 @@ public abstract class Ghost : MonoBehaviour
             direction.x * moveSpeed,
             rigidBody.linearVelocity.y,
             direction.z * moveSpeed);
+    }
+
+    private void RotateTowardPlayer()
+    {
+        if (playerTransform == null || IsDead) return;
+
+        Vector3 direction = playerTransform.position - transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.001f) return;
+
+        Quaternion targetRotation = Quaternion.LookRotation(direction);
+        rigidBody.MoveRotation(Quaternion.Slerp(rigidBody.rotation, targetRotation, 10f * Time.fixedDeltaTime));
     }
 
     // --- Damage ---
