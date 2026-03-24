@@ -11,6 +11,7 @@ public enum DamageSource { Light, UVLight, Salt }
 /// Handles HP, damage from any source, movement toward the player, and death.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
+
 public abstract class Ghost : MonoBehaviour
 {
     [Header("Health")]
@@ -129,12 +130,16 @@ public abstract class Ghost : MonoBehaviour
 
     // --- Grab on Contact ---
 
-    private void OnCollisionEnter(Collision collision)
+    // Using OnTriggerEnter instead of OnCollisionEnter:
+    // The ghost CapsuleCollider must have isTrigger = true in the Inspector.
+    // This avoids dependency on the Physics collision matrix between layers
+    // and is immune to child colliders intercepting the event.
+    private void OnTriggerEnter(Collider other)
     {
         if (IsDead) return;
-        if (!collision.gameObject.CompareTag("Player")) return;
+        if (!other.CompareTag("Player")) return;
 
-        if (collision.gameObject.TryGetComponent(out PlayerGrabState grabState))
+        if (other.TryGetComponent(out PlayerGrabState grabState))
             grabState.Grab(this);
     }
 

@@ -2,17 +2,16 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Provides visual feedback when the player is grabbed:
-/// - Red vignette overlay that pulses.
-/// - Camera shake that ramps up the longer the grab lasts.
-/// Assign a full-screen UI Image (red, alpha 0 at rest) and the player camera in the Inspector.
+/// Provides visual feedback when the player is grabbed by a ghost:
+/// - Camera shake retriggered continuously via CameraFollow.Shake().
+/// - Red vignette overlay that pulses while grabbed.
 /// </summary>
 public class GrabFeedback : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private PlayerGrabState grabState;
     [SerializeField] private Image vignetteImage;
-    [SerializeField] private Camera playerCamera;
+    [SerializeField] private CameraFollow cameraFollow;
 
     [Header("Vignette")]
     [SerializeField] private float maxVignetteAlpha = 0.55f;
@@ -20,19 +19,17 @@ public class GrabFeedback : MonoBehaviour
     [SerializeField] private float vignetteFadeSpeed = 3f;
 
     [Header("Camera Shake")]
-    [SerializeField] private float maxShakeIntensity = 0.08f;
-    [SerializeField] private float shakeRampSpeed = 0.5f;
+    [SerializeField] private float shakeIntensity = 0.25f;
+    [SerializeField] private float shakeDuration = 0.35f;
 
-    private Vector3 cameraOriginalLocalPos;
-    private float currentShakeIntensity;
+    // How long before re-triggering the shake while still grabbed.
+    private const float ShakeRetriggerInterval = 0.25f;
+    private float shakeRetriggerTimer;
 
     private void Awake()
     {
-        if (playerCamera == null)
-            playerCamera = Camera.main;
-
-        if (playerCamera != null)
-            cameraOriginalLocalPos = playerCamera.transform.localPosition;
+        if (cameraFollow == null)
+            cameraFollow = Camera.main != null ? Camera.main.GetComponent<CameraFollow>() : null;
 
         if (grabState == null)
             grabState = GetComponent<PlayerGrabState>();
@@ -45,11 +42,12 @@ public class GrabFeedback : MonoBehaviour
         if (grabState.IsGrabbed)
         {
             UpdateVignette();
-            UpdateCameraShake();
+            UpdateShake();
         }
         else
         {
-            ResetFeedback();
+            FadeVignette();
+            shakeRetriggerTimer = 0f;
         }
     }
 
@@ -63,39 +61,25 @@ public class GrabFeedback : MonoBehaviour
         vignetteImage.color = color;
     }
 
-    private void UpdateCameraShake()
+    private void FadeVignette()
     {
-        if (playerCamera == null) return;
+        if (vignetteImage == null) return;
 
-        currentShakeIntensity = Mathf.MoveTowards(
-            currentShakeIntensity,
-            maxShakeIntensity,
-            shakeRampSpeed * Time.deltaTime);
-
-        Vector3 shakeOffset = new Vector3(
-            Random.Range(-1f, 1f),
-            Random.Range(-1f, 1f),
-            0f) * currentShakeIntensity;
-
-        playerCamera.transform.localPosition = cameraOriginalLocalPos + shakeOffset;
+        Color color = vignetteImage.color;
+        color.a = Mathf.MoveTowards(color.a, 0f, vignetteFadeSpeed * Time.deltaTime);
+        vignetteImage.color = color;
     }
 
-    private void ResetFeedback()
+    private void UpdateShake()
     {
-        if (vignetteImage != null)
-        {
-            Color color = vignetteImage.color;
-            color.a = Mathf.MoveTowards(color.a, 0f, vignetteFadeSpeed * Time.deltaTime);
-            vignetteImage.color = color;
-        }
+        if (cameraFollow == null) return;
 
-        if (playerCamera != null)
+        shakeRetriggerTimer -= Time.deltaTime;
+
+        if (shakeRetriggerTimer <= 0f)
         {
-            currentShakeIntensity = 0f;
-            playerCamera.transform.localPosition = Vector3.Lerp(
-                playerCamera.transform.localPosition,
-                cameraOriginalLocalPos,
-                Time.deltaTime * 10f);
+            cameraFollow.Shake(shakeIntensity, shakeDuration);
+            shakeRetriggerTimer = ShakeRetriggerInterval;
         }
     }
 }

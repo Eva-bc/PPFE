@@ -9,9 +9,13 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
-    public float CurrentHealth { get; private set; }
+    // NonSerialized prevents Unity from persisting this value across editor sessions.
+    [System.NonSerialized]
+    private float currentHealth;
+
+    public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
-    public bool IsDead => CurrentHealth <= 0f;
+    public bool IsDead => currentHealth <= 0f;
 
     // Fired whenever HP changes � subscribe for UI updates.
     public event System.Action<float, float> OnHealthChanged;
@@ -21,14 +25,14 @@ public class PlayerHealth : MonoBehaviour
 
     private void Awake()
     {
-        CurrentHealth = maxHealth;
+        currentHealth = maxHealth;
     }
 
     private void Start()
     {
         // Broadcast initial value so any UI that subscribed during Start()
         // receives the correct fill amount after all Awake() calls have run.
-        OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
     /// <summary>Applies damage to the player. Ignored if already dead.</summary>
@@ -37,11 +41,11 @@ public class PlayerHealth : MonoBehaviour
     {
         if (IsDead) return;
 
-        CurrentHealth = Mathf.Max(CurrentHealth - amount, 0f);
+        currentHealth = Mathf.Max(currentHealth - amount, 0f);
 
-        Debug.Log($"[PlayerHealth] TakeDamage({amount:F1}) → {CurrentHealth:F1}/{maxHealth:F1}");
+        Debug.Log($"[PlayerHealth] TakeDamage({amount:F1}) -> {currentHealth:F1}/{maxHealth:F1}");
 
-        OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
 
         if (IsDead)
             Die();

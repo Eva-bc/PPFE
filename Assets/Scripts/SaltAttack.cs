@@ -14,6 +14,9 @@ public class SaltAttack : MonoBehaviour
     [SerializeField] private float cooldown = 3f;
     [SerializeField] private LayerMask ghostLayerMask;
 
+    [Header("Knockback")]
+    [SerializeField] private float knockbackForce = 12f;
+
     [Header("Visual Effects")]
     [SerializeField] private SaltParticleEffect saltParticleEffect;
 
@@ -42,7 +45,7 @@ public class SaltAttack : MonoBehaviour
     {
         if (!IsReady)
         {
-            Debug.Log($"[Salt] On cooldown — {cooldownRemaining:F1}s remaining.");
+            Debug.Log($"[Salt] On cooldown ï¿½ {cooldownRemaining:F1}s remaining.");
             return;
         }
 
@@ -60,14 +63,39 @@ public class SaltAttack : MonoBehaviour
         int hits = 0;
         for (int i = 0; i < count; i++)
         {
-            if (overlapResults[i].TryGetComponent(out Ghost ghost))
-            {
-                ghost.TakeDamage(damageAmount, DamageSource.Salt);
-                hits++;
-            }
+            if (!overlapResults[i].TryGetComponent(out Ghost ghost)) continue;
+
+            ghost.TakeDamage(damageAmount, DamageSource.Salt);
+            ApplyKnockback(overlapResults[i]);
+            hits++;
         }
 
         Debug.Log($"[Salt] Attack hit {hits} ghost(s).");
+    }
+
+    /// <summary>
+    /// Propels the ghost away from the player.
+    /// Force is scaled by proximity: full force at contact, half force at max radius.
+    /// </summary>
+    private void ApplyKnockback(Collider ghostCollider)
+    {
+        if (!ghostCollider.TryGetComponent(out Rigidbody ghostRb)) return;
+
+        Vector3 direction = ghostCollider.transform.position - transform.position;
+        direction.y = 0f;
+
+        // Fallback direction if the ghost is exactly on the player.
+        if (direction.sqrMagnitude < 0.001f)
+            direction = ghostCollider.transform.forward;
+
+        direction.Normalize();
+
+        // Scale force by inverse proximity: closer = stronger knockback.
+        float distance = Vector3.Distance(transform.position, ghostCollider.transform.position);
+        float proximityScale = 1f - Mathf.Clamp01(distance / radius);
+        float scaledForce = Mathf.Lerp(knockbackForce * 0.5f, knockbackForce, proximityScale);
+
+        ghostRb.AddForce(direction * scaledForce, ForceMode.Impulse);
     }
 
 #if UNITY_EDITOR
