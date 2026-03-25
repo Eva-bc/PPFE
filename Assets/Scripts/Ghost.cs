@@ -125,6 +125,11 @@ public abstract class Ghost : MonoBehaviour
     private void Die()
     {
         OnDeath();
+
+        // Spawn puddle before destroying so the VFX component is still accessible.
+        if (TryGetComponent(out GhostDeathVFX deathVFX))
+            deathVFX.SpawnPuddle();
+
         Destroy(gameObject);
     }
 

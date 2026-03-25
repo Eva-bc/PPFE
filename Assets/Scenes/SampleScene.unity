@@ -236,14 +236,14 @@ RectTransform:
   m_GameObject: {fileID: 43253337}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.3, y: 11.91, z: 1.22}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 885731449}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 8, y: -21.5}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &43253339
@@ -259,14 +259,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.15, g: 0.15, b: 0.15, a: 1}
+  m_Color: {r: 0.8, g: 0, b: 0, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 6a9583c0bb693024b8aa448579fa4ab2, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -21109,7 +21109,7 @@ MonoBehaviour:
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -21188,6 +21188,21 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1186373894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 522962553}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97b42b4265409074b848d37ed8ddfbfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GhostDeathVFX
+  puddlePrefab: {fileID: 7748237891098322078, guid: 5285cbb0c75449147bcdf19d7c5334e7, type: 3}
+  puddleColor: {r: 0.6666667, g: 0, b: 1, a: 1}
+  groundOffset: 0.02
 --- !u!1001 &1314069003
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -21300,6 +21315,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 7396471817410193554, guid: 91194d229867e794aba7959be02c56b8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1668176216}
+    - targetCorrespondingSourceObject: {fileID: 7396471817410193554, guid: 91194d229867e794aba7959be02c56b8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1668176217}
   m_SourcePrefab: {fileID: 100100000, guid: 91194d229867e794aba7959be02c56b8, type: 3}
 --- !u!1 &1479406848 stripped
 GameObject:
@@ -21578,6 +21596,21 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1668176217
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1479406848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97b42b4265409074b848d37ed8ddfbfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GhostDeathVFX
+  puddlePrefab: {fileID: 7748237891098322078, guid: 5285cbb0c75449147bcdf19d7c5334e7, type: 3}
+  puddleColor: {r: 0, g: 1, b: 0.53333336, a: 1}
+  groundOffset: 0.02
 --- !u!1 &1713135808
 GameObject:
   m_ObjectHideFlags: 0
@@ -22037,6 +22070,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3606582935961119612, guid: 65e19b58adcee88418c717ea0a172867, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1186373893}
+    - targetCorrespondingSourceObject: {fileID: 3606582935961119612, guid: 65e19b58adcee88418c717ea0a172867, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1186373894}
   m_SourcePrefab: {fileID: 100100000, guid: 65e19b58adcee88418c717ea0a172867, type: 3}
 --- !u!1 &1840085080
 GameObject:
@@ -22276,14 +22312,14 @@ RectTransform:
   m_GameObject: {fileID: 2006060603}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.93, y: 0.85, z: 1.39}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 885731449}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 46.4, y: -8.9}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2006060605
@@ -22525,9 +22561,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FlashlightVisual
   spotLight: {fileID: 1589151049}
   flashlightController: {fileID: 2053658453}
-  lightIntensity: 10
+  lightIntensity: 100
   lightColor: {r: 1, g: 0.95, b: 0.8, a: 1}
-  uvIntensity: 10
+  uvIntensity: 100
   uvColor: {r: 0.6, g: 0, b: 1, a: 1}
   fadeSpeed: 20
 --- !u!114 &2053658461
@@ -22638,6 +22674,21 @@ CapsuleCollider:
   m_Height: 2.54
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &2115332078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1653165091}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97b42b4265409074b848d37ed8ddfbfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GhostDeathVFX
+  puddlePrefab: {fileID: 7748237891098322078, guid: 5285cbb0c75449147bcdf19d7c5334e7, type: 3}
+  puddleColor: {r: 0.78431374, g: 0.78431374, b: 1, a: 1}
+  groundOffset: 0.02
 --- !u!1001 &6076076302096687452
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -22782,6 +22833,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2115332077}
+    - targetCorrespondingSourceObject: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2115332078}
   m_SourcePrefab: {fileID: 100100000, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
