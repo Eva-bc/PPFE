@@ -63,6 +63,6 @@ public class SaltCooldownUI : MonoBehaviour
 
         // Animate scale back to 1 using MoveTowards for a guaranteed landing.
         currentPulse = Mathf.MoveTowards(currentPulse, 1f, pulseSpeed * Time.deltaTime);
-        transform.localScale = Vector3.one * currentPulse;
+        transform.localScale = Vector3.one * currentPulse *1.72f;
     }
 }

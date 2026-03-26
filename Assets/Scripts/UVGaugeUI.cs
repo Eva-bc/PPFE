@@ -98,6 +98,6 @@ public class UVGaugeUI : MonoBehaviour
         wasReady = isReady;
 
         currentPulse = Mathf.MoveTowards(currentPulse, 1f, pulseSpeed * Time.deltaTime);
-        transform.localScale = Vector3.one * currentPulse;
+        transform.localScale = Vector3.one * currentPulse * 1.72f;
     }
 }
