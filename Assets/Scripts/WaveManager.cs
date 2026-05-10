@@ -4,13 +4,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Spawns ghosts from a WaveData asset at the assigned spawn points.
+/// Spawns ghosts according to a RoomData asset (multi-phase).
 /// Reports active enemy count to the RoomManager via events.
+/// OnWaveCleared fires only when all phases are done AND all ghosts are dead.
 /// </summary>
 public class WaveManager : MonoBehaviour
 {
     [Header("Spawn Points")]
-    [Tooltip("World positions where ghosts can appear. Assigned round-robin if fewer than the total ghost count.")]
+    [Tooltip("World positions where ghosts can appear. Assigned round-robin.")]
     [SerializeField] private Transform[] spawnPoints;
 
     [Header("VFX (optional)")]
@@ -20,18 +21,19 @@ public class WaveManager : MonoBehaviour
     // Fired when a ghost dies, passing the remaining active count.
     public event Action<int> OnEnemyDied;
 
-    // Fired once when all ghosts in the wave are dead.
+    // Fired once when all phases are complete and all ghosts are dead.
     public event Action OnWaveCleared;
 
     private readonly List<Ghost> activeGhosts = new();
     private int spawnIndex;
+    private bool allPhasesSpawned;
 
-    /// <summary>Starts spawning the given wave. Safe to call from RoomManager.</summary>
-    public void StartWave(WaveData waveData)
+    /// <summary>Starts spawning all phases of the given room. Safe to call from RoomManager.</summary>
+    public void StartWave(RoomData roomData)
     {
-        if (waveData == null)
+        if (roomData == null)
         {
-            Debug.LogError("[WaveManager] WaveData is null � cannot start wave.");
+            Debug.LogError("[WaveManager] RoomData is null — cannot start wave.");
             return;
         }
 
@@ -41,35 +43,46 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
-        StartCoroutine(SpawnRoutine(waveData));
+        activeGhosts.Clear();
+        allPhasesSpawned = false;
+        spawnIndex = 0;
+
+        StartCoroutine(SpawnRoutine(roomData));
     }
 
     // --- Spawning ---
 
-    private IEnumerator SpawnRoutine(WaveData waveData)
+    private IEnumerator SpawnRoutine(RoomData roomData)
     {
-        yield return new WaitForSeconds(waveData.spawnDelay);
-
-        foreach (WaveData.GhostSpawnEntry entry in waveData.ghostEntries)
+        foreach (RoomData.Phase phase in roomData.phases)
         {
-            if (entry.prefab == null)
+            yield return new WaitForSeconds(phase.delayBefore);
+
+            if (phase.prefab == null)
             {
-                Debug.LogWarning("[WaveManager] Un prefab est null dans WaveData — entrée ignorée.");
+                Debug.LogWarning("[WaveManager] Un prefab est null dans RoomData — phase ignorée.");
                 continue;
             }
 
-            if (entry.prefab.GetComponent<Ghost>() == null)
+            if (phase.prefab.GetComponent<Ghost>() == null)
             {
-                Debug.LogWarning($"[WaveManager] Le prefab '{entry.prefab.name}' n'a pas de composant Ghost — entrée ignorée.");
+                Debug.LogWarning($"[WaveManager] Le prefab '{phase.prefab.name}' n'a pas de composant Ghost — phase ignorée.");
                 continue;
             }
 
-            for (int i = 0; i < entry.count; i++)
+            for (int i = 0; i < phase.count; i++)
             {
-                SpawnGhost(entry.prefab);
-                yield return new WaitForSeconds(waveData.spawnInterval);
+                SpawnGhost(phase.prefab);
+                if (i < phase.count - 1)
+                    yield return new WaitForSeconds(roomData.spawnInterval);
             }
         }
+
+        allPhasesSpawned = true;
+
+        // All phases done: if no ghost survived until now, fire immediately.
+        if (activeGhosts.Count == 0)
+            OnWaveCleared?.Invoke();
     }
 
     private void SpawnGhost(GameObject prefab)
@@ -95,13 +108,13 @@ public class WaveManager : MonoBehaviour
 
     private void HandleGhostDeath(Ghost ghost)
     {
-        // Guard: ghost may already have been removed (event fires before Destroy completes).
         if (!activeGhosts.Contains(ghost)) return;
 
         activeGhosts.Remove(ghost);
         OnEnemyDied?.Invoke(activeGhosts.Count);
 
-        if (activeGhosts.Count == 0)
+        // Fire only when all phases have been sent AND no ghost remains.
+        if (allPhasesSpawned && activeGhosts.Count == 0)
             OnWaveCleared?.Invoke();
     }
 }

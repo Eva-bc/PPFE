@@ -58,7 +58,7 @@ public class SaltAttack : MonoBehaviour
         saltParticleEffect?.Play();
 
         int count = Physics.OverlapSphereNonAlloc(
-            transform.position, radius, overlapResults, ghostLayerMask);
+            transform.position, radius, overlapResults, ghostLayerMask, QueryTriggerInteraction.Collide);
 
         int hits = 0;
         for (int i = 0; i < count; i++)

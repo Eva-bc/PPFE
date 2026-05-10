@@ -31,7 +31,7 @@ public class FlashlightController : MonoBehaviour
     public bool IsActive { get; private set; }
     public bool IsUVActive { get; private set; }
     public Vector3 AimDirection => aimDirection;
-    // 0–1 : diminue pendant l'utilisation UV, remonte pendant le cooldown.
+    // 0ï¿½1 : diminue pendant l'utilisation UV, remonte pendant le cooldown.
     public float UVGaugeProgress
     {
         get
@@ -134,7 +134,7 @@ public class FlashlightController : MonoBehaviour
     private void DamageGhostsInCone()
     {
         int count = Physics.OverlapSphereNonAlloc(
-            transform.position, range, overlapResults, ghostLayerMask);
+            transform.position, range, overlapResults, ghostLayerMask, QueryTriggerInteraction.Collide);
 
         for (int i = 0; i < count; i++)
         {

@@ -3,16 +3,16 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// Manages a single room: detects player entry, triggers the wave,
-/// locks/unlocks doors, and tracks wave completion.
+/// Manages a single room: detects player entry, triggers all ghost phases,
+/// locks/unlocks doors, and tracks full wave completion.
 /// Attach to a GameObject with a trigger Collider covering the room entrance.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class RoomManager : MonoBehaviour
 {
     [Header("Wave")]
-    [Tooltip("The WaveData asset that defines ghosts for this room.")]
-    [SerializeField] private WaveData waveData;
+    [Tooltip("The RoomData asset that defines all ghost phases for this room.")]
+    [SerializeField] private RoomData roomData;
 
     [SerializeField] private WaveManager waveManager;
 
@@ -89,7 +89,7 @@ public class RoomManager : MonoBehaviour
 
         SetUI(waveActiveUI, true);
 
-        waveManager.StartWave(waveData);
+        waveManager.StartWave(roomData);
         onWaveStarted?.Invoke();
 
         Debug.Log($"[RoomManager] Room '{name}' started.");

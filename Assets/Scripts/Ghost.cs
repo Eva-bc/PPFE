@@ -133,21 +133,6 @@ public abstract class Ghost : MonoBehaviour
         Destroy(gameObject);
     }
 
-    // --- Grab on Contact ---
-
-    // Using OnTriggerEnter instead of OnCollisionEnter:
-    // The ghost CapsuleCollider must have isTrigger = true in the Inspector.
-    // This avoids dependency on the Physics collision matrix between layers
-    // and is immune to child colliders intercepting the event.
-    private void OnTriggerEnter(Collider other)
-    {
-        if (IsDead) return;
-        if (!other.CompareTag("Player")) return;
-
-        if (other.TryGetComponent(out PlayerGrabState grabState))
-            grabState.Grab(this);
-    }
-
     // --- Overridable Hooks ---
 
     /// <summary>Called each time this ghost takes damage. Override to add reactions.</summary>
