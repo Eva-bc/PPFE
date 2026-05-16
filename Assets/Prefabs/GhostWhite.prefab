@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2096606457479929115}
   - component: {fileID: 8368220562674369999}
   - component: {fileID: 13635762965589503}
+  - component: {fileID: 710861507957383641}
   m_Layer: 3
   m_Name: GhostWhite
   m_TagString: Untagged
@@ -102,6 +103,23 @@ MonoBehaviour:
   lightVulnerability: 1
   saltVulnerability: 1
   moveSpeed: 3
+  separationRadius: 1.5
+  separationForce: 2
+--- !u!114 &710861507957383641
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5675618606848251972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97b42b4265409074b848d37ed8ddfbfd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GhostDeathVFX
+  puddlePrefab: {fileID: 7748237891098322078, guid: 5285cbb0c75449147bcdf19d7c5334e7, type: 3}
+  puddleColor: {r: 1, g: 1, b: 1, a: 1}
+  groundOffset: 0.02
 --- !u!1 &6277439775635466434
 GameObject:
   m_ObjectHideFlags: 0

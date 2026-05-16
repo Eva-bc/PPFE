@@ -14,19 +14,31 @@ public class WaveManager : MonoBehaviour
     [Tooltip("World positions where ghosts can appear. Assigned round-robin.")]
     [SerializeField] private Transform[] spawnPoints;
 
+    [Header("Audio (optional)")]
+    [Tooltip("AudioClip played at each spawn point when a ghost appears.")]
+    [SerializeField] private AudioClip ghostSpawnSound;
+
     [Header("VFX (optional)")]
     [Tooltip("Particle system played at each spawn point when a ghost appears.")]
     [SerializeField] private ParticleSystem spawnVFX;
 
-    // Fired when a ghost dies, passing the remaining active count.
+    /// <summary>Fired when a ghost dies, passing the remaining active count.</summary>
     public event Action<int> OnEnemyDied;
 
-    // Fired once when all phases are complete and all ghosts are dead.
+    /// <summary>Fired once when all phases are complete and all ghosts are dead.</summary>
     public event Action OnWaveCleared;
 
     private readonly List<Ghost> activeGhosts = new();
     private int spawnIndex;
     private bool allPhasesSpawned;
+    private AudioSource audioSource;
+
+    private void Awake()
+    {
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 1f;
+    }
 
     /// <summary>Starts spawning all phases of the given room. Safe to call from RoomManager.</summary>
     public void StartWave(RoomData roomData)
@@ -99,6 +111,9 @@ public class WaveManager : MonoBehaviour
             if (current <= 0f)
                 HandleGhostDeath(ghost);
         };
+
+        if (ghostSpawnSound != null)
+            audioSource.PlayOneShot(ghostSpawnSound);
 
         if (spawnVFX != null)
             Instantiate(spawnVFX, point.position, Quaternion.identity);

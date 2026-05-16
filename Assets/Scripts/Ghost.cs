@@ -24,13 +24,35 @@ public abstract class Ghost : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 3f;
 
+    [Header("Separation")]
+    [SerializeField] private float separationRadius = 1.5f;
+    [SerializeField] private float separationForce  = 2f;
+
     private float currentHealth;
     private Rigidbody rigidBody;
     private Transform playerTransform;
 
+    // Reusable buffer for separation overlap checks — avoids per-frame allocations.
+    private readonly Collider[] separationBuffer = new Collider[8];
+
     public bool IsDead => currentHealth <= 0f;
     public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
+
+    // Repulsion state — suspends autonomous movement briefly after being pushed.
+    private bool  isRepulsed;
+    private float repulsionTimer;
+
+    /// <summary>
+    /// Applies an instant impulse and suspends movement for the given duration.
+    /// Called by PlayerGrabState on escape.
+    /// </summary>
+    public void Repulse(Vector3 force, float duration)
+    {
+        rigidBody.AddForce(force, ForceMode.Impulse);
+        isRepulsed    = true;
+        repulsionTimer = duration;
+    }
 
     // Fired after health changes — GhostHealthBar subscribes to this.
     public event System.Action<float, float> OnHealthChanged;
@@ -56,6 +78,14 @@ public abstract class Ghost : MonoBehaviour
 
     protected virtual void FixedUpdate()
     {
+        if (isRepulsed)
+        {
+            repulsionTimer -= Time.fixedDeltaTime;
+            if (repulsionTimer <= 0f)
+                isRepulsed = false;
+            return; // skip autonomous movement while repulsed
+        }
+
         MoveTowardPlayer();
         RotateTowardPlayer();
     }
@@ -66,14 +96,56 @@ public abstract class Ghost : MonoBehaviour
     {
         if (playerTransform == null || IsDead) return;
 
-        Vector3 direction = playerTransform.position - transform.position;
-        direction.y = 0f;
-        direction = direction.normalized;
+        Vector3 toPlayer = playerTransform.position - transform.position;
+        toPlayer.y = 0f;
+        Vector3 moveDir = toPlayer.normalized;
+
+        // Steering separation: accumulate a push vector away from every nearby ghost.
+        Vector3 separation = ComputeSeparation();
+
+        Vector3 finalDir = (moveDir + separation).normalized;
 
         rigidBody.linearVelocity = new Vector3(
-            direction.x * moveSpeed,
+            finalDir.x * moveSpeed,
             rigidBody.linearVelocity.y,
-            direction.z * moveSpeed);
+            finalDir.z * moveSpeed);
+    }
+
+    /// <summary>
+    /// Computes a lateral separation vector to keep this ghost from overlapping its neighbours.
+    /// </summary>
+    private Vector3 ComputeSeparation()
+    {
+        int count = Physics.OverlapSphereNonAlloc(
+            transform.position, separationRadius, separationBuffer);
+
+        Vector3 push = Vector3.zero;
+
+        for (int i = 0; i < count; i++)
+        {
+            Collider neighbour = separationBuffer[i];
+
+            // Ignore self and non-ghost colliders.
+            if (neighbour.gameObject == gameObject) continue;
+            if (!neighbour.TryGetComponent(out Ghost _)) continue;
+
+            Vector3 away = transform.position - neighbour.transform.position;
+            away.y = 0f;
+
+            float distance = away.magnitude;
+            if (distance < 0.001f)
+            {
+                // Perfectly overlapping: push in a pseudo-random but stable direction.
+                away = new Vector3(transform.position.x + 0.01f, 0f, transform.position.z);
+                distance = 0.01f;
+            }
+
+            // Closer neighbours exert a stronger push.
+            float weight = 1f - Mathf.Clamp01(distance / separationRadius);
+            push += away.normalized * (weight * separationForce);
+        }
+
+        return push;
     }
 
     private void RotateTowardPlayer()
@@ -124,12 +196,9 @@ public abstract class Ghost : MonoBehaviour
 
     private void Die()
     {
+        // OnDeath() is called first so subclasses can still access GhostDeathVFX
+        // before the GameObject is destroyed.
         OnDeath();
-
-        // Spawn puddle before destroying so the VFX component is still accessible.
-        if (TryGetComponent(out GhostDeathVFX deathVFX))
-            deathVFX.SpawnPuddle();
-
         Destroy(gameObject);
     }
 

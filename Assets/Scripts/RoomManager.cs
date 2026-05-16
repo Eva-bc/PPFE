@@ -4,7 +4,7 @@ using UnityEngine.Events;
 
 /// <summary>
 /// Manages a single room: detects player entry, triggers all ghost phases,
-/// locks/unlocks doors, and tracks full wave completion.
+/// locks/unlocks doors, spawns the room key, and tracks full wave completion.
 /// Attach to a GameObject with a trigger Collider covering the room entrance.
 /// </summary>
 [RequireComponent(typeof(Collider))]
@@ -20,33 +20,50 @@ public class RoomManager : MonoBehaviour
     [Tooltip("Door(s) that lock when the player enters the room.")]
     [SerializeField] private Door[] entryDoors;
 
-    [Tooltip("Door(s) that unlock when the wave is cleared.")]
+    [Tooltip("Door(s) that unlock when the key is collected.")]
     [SerializeField] private Door[] exitDoors;
+
+    [Header("Key")]
+    [Tooltip("Prefab of the RoomKey to spawn when all enemies are defeated.")]
+    [SerializeField] private RoomKey keyPrefab;
+
+    [Tooltip("World position where the key will appear. Defaults to the RoomManager's position if left empty.")]
+    [SerializeField] private Transform keySpawnPoint;
+
+    [Header("Audio (optional)")]
+    [Tooltip("AudioClip played when a new ghost wave starts.")]
+    [SerializeField] private AudioClip waveStartSound;
 
     [Header("Events (optional)")]
     [Tooltip("Fired when the player enters the room and the wave starts.")]
     public UnityEvent onWaveStarted;
 
-    [Tooltip("Fired when all enemies are defeated.")]
+    [Tooltip("Fired when all enemies are defeated (before key spawn).")]
     public UnityEvent onRoomCleared;
 
+    [Tooltip("Fired when the player collects the key and the exit door opens.")]
+    public UnityEvent onKeyCollected;
+
     [Header("UI (optional)")]
-    [Tooltip("GameObject shown while the wave is active (e.g. 'Wave en cours' panel).")]
+    [Tooltip("GameObject shown while the wave is active.")]
     [SerializeField] private GameObject waveActiveUI;
 
-    [Tooltip("GameObject shown when the room is cleared (e.g. 'Room Clear' panel).")]
+    [Tooltip("GameObject shown when the room is cleared (before key collection).")]
     [SerializeField] private GameObject roomClearUI;
 
-    [Tooltip("How long the 'Room Clear' UI stays visible before hiding.")]
+    [Tooltip("How long the 'Room Clear' UI stays visible.")]
     [SerializeField] private float roomClearUIDisplayDuration = 2f;
 
     private bool hasBeenTriggered;
+    private AudioSource audioSource;
 
     private void Awake()
     {
-        // Ensure the entry collider is a trigger.
-        Collider col = GetComponent<Collider>();
-        col.isTrigger = true;
+        GetComponent<Collider>().isTrigger = true;
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 1f;
 
         SetUI(waveActiveUI, false);
         SetUI(roomClearUI, false);
@@ -56,7 +73,7 @@ public class RoomManager : MonoBehaviour
     {
         if (waveManager != null)
         {
-            waveManager.OnEnemyDied += HandleEnemyDied;
+            waveManager.OnEnemyDied   += HandleEnemyDied;
             waveManager.OnWaveCleared += HandleWaveCleared;
         }
     }
@@ -65,7 +82,7 @@ public class RoomManager : MonoBehaviour
     {
         if (waveManager != null)
         {
-            waveManager.OnEnemyDied -= HandleEnemyDied;
+            waveManager.OnEnemyDied   -= HandleEnemyDied;
             waveManager.OnWaveCleared -= HandleWaveCleared;
         }
     }
@@ -86,8 +103,10 @@ public class RoomManager : MonoBehaviour
     private void StartRoom()
     {
         LockDoors(entryDoors);
-
         SetUI(waveActiveUI, true);
+
+        if (waveStartSound != null)
+            audioSource.PlayOneShot(waveStartSound);
 
         waveManager.StartWave(roomData);
         onWaveStarted?.Invoke();
@@ -102,16 +121,43 @@ public class RoomManager : MonoBehaviour
 
     private void HandleWaveCleared()
     {
-        UnlockDoors(exitDoors);
-
         SetUI(waveActiveUI, false);
-
         onRoomCleared?.Invoke();
 
-        Debug.Log($"[RoomManager] Room '{name}' cleared!");
+        Debug.Log($"[RoomManager] Room '{name}' cleared — spawning key.");
 
         if (roomClearUI != null)
             StartCoroutine(ShowRoomClearUI());
+
+        SpawnKey();
+    }
+
+    // --- Key ---
+
+    private void SpawnKey()
+    {
+        if (keyPrefab == null)
+        {
+            Debug.LogWarning($"[RoomManager] '{name}': keyPrefab is not assigned — opening doors directly.");
+            OpenExitDoors();
+            return;
+        }
+
+        Vector3 spawnPos = keySpawnPoint != null ? keySpawnPoint.position : transform.position;
+        RoomKey key = Instantiate(keyPrefab, spawnPos, Quaternion.identity);
+        key.OnKeyCollected += HandleKeyCollected;
+    }
+
+    private void HandleKeyCollected()
+    {
+        OpenExitDoors();
+        onKeyCollected?.Invoke();
+        Debug.Log($"[RoomManager] Key collected in '{name}' — exit door opened.");
+    }
+
+    private void OpenExitDoors()
+    {
+        UnlockDoors(exitDoors);
     }
 
     // --- Door Helpers ---
