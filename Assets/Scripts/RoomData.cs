@@ -20,6 +20,9 @@ public class RoomData : ScriptableObject
 
         [Tooltip("Delay in seconds before this phase starts (after the previous phase's last spawn).")]
         [Min(0f)] public float delayBefore;
+
+        [Tooltip("If true, this phase will not start until every ghost from the previous phase is dead. The delayBefore still applies as an additional wait after the last enemy dies.")]
+        public bool waitForPreviousPhase;
     }
 
     [Header("Room Phases")]

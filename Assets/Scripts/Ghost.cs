@@ -24,6 +24,9 @@ public abstract class Ghost : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 3f;
 
+    [Header("Grab Damage")]
+    [SerializeField] private float grabDamageMultiplier = 1f;
+
     [Header("Separation")]
     [SerializeField] private float separationRadius = 1.5f;
     [SerializeField] private float separationForce  = 2f;
@@ -38,6 +41,8 @@ public abstract class Ghost : MonoBehaviour
     public bool IsDead => currentHealth <= 0f;
     public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
+    /// <summary>Multiplier applied to grab damage dealt to the player by this ghost type.</summary>
+    public float GrabDamageMultiplier => grabDamageMultiplier;
 
     // Repulsion state — suspends autonomous movement briefly after being pushed.
     private bool  isRepulsed;

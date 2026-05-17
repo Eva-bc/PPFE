@@ -66,8 +66,20 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator SpawnRoutine(RoomData roomData)
     {
+        List<Ghost> previousPhaseGhosts = new();
+
         foreach (RoomData.Phase phase in roomData.phases)
         {
+            // If requested, block until every ghost from the previous phase is dead.
+            if (phase.waitForPreviousPhase && previousPhaseGhosts.Count > 0)
+            {
+                yield return new WaitUntil(() =>
+                {
+                    previousPhaseGhosts.RemoveAll(g => g == null);
+                    return previousPhaseGhosts.Count == 0;
+                });
+            }
+
             yield return new WaitForSeconds(phase.delayBefore);
 
             if (phase.prefab == null)
@@ -82,9 +94,12 @@ public class WaveManager : MonoBehaviour
                 continue;
             }
 
+            previousPhaseGhosts.Clear();
+
             for (int i = 0; i < phase.count; i++)
             {
-                SpawnGhost(phase.prefab);
+                Ghost spawned = SpawnGhost(phase.prefab);
+                previousPhaseGhosts.Add(spawned);
                 if (i < phase.count - 1)
                     yield return new WaitForSeconds(roomData.spawnInterval);
             }
@@ -97,7 +112,7 @@ public class WaveManager : MonoBehaviour
             OnWaveCleared?.Invoke();
     }
 
-    private void SpawnGhost(GameObject prefab)
+    private Ghost SpawnGhost(GameObject prefab)
     {
         Transform point = spawnPoints[spawnIndex % spawnPoints.Length];
         spawnIndex++;
@@ -117,6 +132,8 @@ public class WaveManager : MonoBehaviour
 
         if (spawnVFX != null)
             Instantiate(spawnVFX, point.position, Quaternion.identity);
+
+        return ghost;
     }
 
     // --- Death Tracking ---

@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Projects a cone of light toward the mouse cursor.
 /// Normal mode: left click held. UV mode: double-click, limited duration and cooldown.
+/// All light input is suppressed while the player is grabbed — only salt remains usable.
 /// </summary>
 public class FlashlightController : MonoBehaviour
 {
@@ -27,6 +28,8 @@ public class FlashlightController : MonoBehaviour
 
     // Direction from the player toward the mouse cursor, updated every frame.
     private Vector3 aimDirection;
+
+    private PlayerGrabState grabState;
 
     public bool IsActive { get; private set; }
     public bool IsUVActive { get; private set; }
@@ -62,6 +65,7 @@ public class FlashlightController : MonoBehaviour
     {
         mainCamera = Camera.main;
         aimDirection = transform.forward;
+        grabState = GetComponent<PlayerGrabState>();
     }
 
     private void Update()
@@ -80,6 +84,14 @@ public class FlashlightController : MonoBehaviour
     {
         Mouse mouse = Mouse.current;
         if (mouse == null) return;
+
+        // All light input is blocked while the player is grabbed.
+        bool isGrabbed = grabState != null && grabState.IsGrabbed;
+        if (isGrabbed)
+        {
+            IsActive = false;
+            return;
+        }
 
         // Normal flashlight: held click (only when UV is not active).
         IsActive = mouse.leftButton.isPressed && !IsUVActive;
@@ -113,6 +125,17 @@ public class FlashlightController : MonoBehaviour
 
     private void UpdateUVTimer()
     {
+        // Force UV off while grabbed.
+        if (grabState != null && grabState.IsGrabbed)
+        {
+            if (IsUVActive)
+            {
+                IsUVActive = false;
+                uvCooldownRemaining = uvCooldown;
+            }
+            return;
+        }
+
         if (IsUVActive)
         {
             uvRemainingTime -= Time.deltaTime;

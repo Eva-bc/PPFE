@@ -265,10 +265,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 736569c334310b9458ca8b1802515e1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GhostPurple
-  maxHealth: 200
+  maxHealth: 80
   lightVulnerability: 0.3
   saltVulnerability: 1
   moveSpeed: 1.5
+  grabDamageMultiplier: 2.5
   separationRadius: 1.5
   separationForce: 2
 --- !u!224 &4288049144229814241 stripped

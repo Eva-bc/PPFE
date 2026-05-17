@@ -16,7 +16,9 @@ MonoBehaviour:
   - prefab: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
     count: 2
     delayBefore: 1.5
+    waitForPreviousPhase: 0
   - prefab: {fileID: 7396471817410193554, guid: 91194d229867e794aba7959be02c56b8, type: 3}
     count: 2
     delayBefore: 5
+    waitForPreviousPhase: 1
   spawnInterval: 0.4

@@ -273,7 +273,8 @@ MonoBehaviour:
   maxHealth: 50
   lightVulnerability: 0.6
   saltVulnerability: 1
-  moveSpeed: 6
+  moveSpeed: 5
+  grabDamageMultiplier: 1
   separationRadius: 1.5
   separationForce: 2
 --- !u!224 &8010379840150756367 stripped

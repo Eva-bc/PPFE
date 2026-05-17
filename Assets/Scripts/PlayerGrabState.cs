@@ -143,7 +143,8 @@ public class PlayerGrabState : MonoBehaviour
     {
         grabDuration += Time.deltaTime;
         float rate    = baseDamagePerSecond + damageEscalationPerSec * grabDuration;
-        playerHealth.TakeDamage(rate * Time.deltaTime);
+        float multiplier = grabbingGhost != null ? grabbingGhost.GrabDamageMultiplier : 1f;
+        playerHealth.TakeDamage(rate * multiplier * Time.deltaTime);
 
         if (playerHealth.IsDead)
             Release();
