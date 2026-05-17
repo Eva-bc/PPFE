@@ -94,7 +94,10 @@ public class GrabCountdownUI : MonoBehaviour
     private void HandleReleased()
     {
         if (displayImage != null)
-            displayImage.sprite = null;
+        {
+            displayImage.sprite  = null;
+            displayImage.enabled = false;
+        }
     }
 
     // ----------------------------------------------------------- Helpers
