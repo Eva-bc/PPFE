@@ -4,8 +4,11 @@ using UnityEngine.Events;
 
 /// <summary>
 /// Manages a single room: detects player entry, triggers all ghost phases,
-/// locks/unlocks doors, spawns the room key, and tracks full wave completion.
-/// Attach to a GameObject with a trigger Collider covering the room entrance.
+/// spawns the room key once all enemies are defeated, and opens the exit door
+/// when the key is collected.
+///
+/// Passage is ALWAYS free by default. The only blocking element is the Door
+/// GameObject itself. This script never locks or blocks the passage in any way.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class RoomManager : MonoBehaviour
@@ -17,10 +20,7 @@ public class RoomManager : MonoBehaviour
     [SerializeField] private WaveManager waveManager;
 
     [Header("Doors")]
-    [Tooltip("Door(s) that lock when the player enters the room.")]
-    [SerializeField] private Door[] entryDoors;
-
-    [Tooltip("Door(s) that unlock when the key is collected.")]
+    [Tooltip("Door(s) that open when the key is collected.")]
     [SerializeField] private Door[] exitDoors;
 
     [Header("Key")]
@@ -65,8 +65,48 @@ public class RoomManager : MonoBehaviour
         audioSource.playOnAwake = false;
         audioSource.spatialBlend = 1f;
 
+        AutoResolveExitDoors();
+
         SetUI(waveActiveUI, false);
         SetUI(roomClearUI, false);
+    }
+
+    /// <summary>
+    /// If exitDoors is empty or contains only nulls, searches the room's immediate
+    /// parent group (e.g. "=== 1 Room ===") for Door components and uses them.
+    /// Only searches one level up to avoid picking up doors from other rooms.
+    /// </summary>
+    private void AutoResolveExitDoors()
+    {
+        bool hasValidDoor = false;
+        if (exitDoors != null)
+        {
+            foreach (Door d in exitDoors)
+            {
+                if (d != null) { hasValidDoor = true; break; }
+            }
+        }
+
+        if (hasValidDoor) return;
+
+        // RoomTrigger -> Room1 -> "=== 1 Room ===" (grandparent of RoomTrigger).
+        Transform searchRoot = transform.parent?.parent;
+        if (searchRoot == null)
+        {
+            Debug.LogWarning($"[RoomManager] '{name}': cannot auto-resolve exitDoors — grandparent not found.");
+            return;
+        }
+
+        Door[] found = searchRoot.GetComponentsInChildren<Door>(true);
+        if (found.Length > 0)
+        {
+            exitDoors = found;
+            Debug.Log($"[RoomManager] '{name}': auto-resolved {found.Length} exit door(s) from '{searchRoot.name}'.");
+        }
+        else
+        {
+            Debug.LogWarning($"[RoomManager] '{name}': no Door components found in '{searchRoot.name}'. Assign exitDoors in the Inspector.");
+        }
     }
 
     private void OnEnable()
@@ -102,7 +142,6 @@ public class RoomManager : MonoBehaviour
 
     private void StartRoom()
     {
-        LockDoors(entryDoors);
         SetUI(waveActiveUI, true);
 
         if (waveStartSound != null)
@@ -157,23 +196,21 @@ public class RoomManager : MonoBehaviour
 
     private void OpenExitDoors()
     {
-        UnlockDoors(exitDoors);
-    }
+        if (exitDoors == null || exitDoors.Length == 0)
+        {
+            Debug.LogWarning("[RoomManager] exitDoors is empty — assign the exit Door in the Inspector.");
+            return;
+        }
 
-    // --- Door Helpers ---
-
-    private static void LockDoors(Door[] doors)
-    {
-        if (doors == null) return;
-        foreach (Door door in doors)
-            door?.Lock();
-    }
-
-    private static void UnlockDoors(Door[] doors)
-    {
-        if (doors == null) return;
-        foreach (Door door in doors)
-            door?.Unlock();
+        foreach (Door door in exitDoors)
+        {
+            if (door == null)
+            {
+                Debug.LogWarning("[RoomManager] exitDoors contains a null entry.");
+                continue;
+            }
+            door.Unlock();
+        }
     }
 
     // --- UI Helpers ---

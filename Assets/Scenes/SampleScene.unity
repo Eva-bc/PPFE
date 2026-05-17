@@ -772,7 +772,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomManager
   roomData: {fileID: 11400000, guid: f926b605c42d1594398332441aebac36, type: 2}
   waveManager: {fileID: 1876023872}
-  entryDoors: []
   exitDoors:
   - {fileID: 1716934865}
   keyPrefab: {fileID: 309994700294126581, guid: 3ce3f0d6327f14b4a8be4a917ca57a88, type: 3}
@@ -6532,7 +6531,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -6724,7 +6723,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RoomManager
   roomData: {fileID: 11400000, guid: 1820c61a3cd0aef41a5d0cb934a56c20, type: 2}
   waveManager: {fileID: 255681092}
-  entryDoors: []
   exitDoors:
   - {fileID: 1683282423}
   keyPrefab: {fileID: 309994700294126581, guid: 3ce3f0d6327f14b4a8be4a917ca57a88, type: 3}
@@ -6762,7 +6760,7 @@ BoxCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 12, y: 3, z: 12}
-  m_Center: {x: 2.86214, y: 1, z: 22.4461}
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &580319131
 GameObject:
   m_ObjectHideFlags: 0
@@ -7061,8 +7059,8 @@ Transform:
   m_GameObject: {fileID: 806140830}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.42, y: -0.05, z: 11.7}
-  m_LocalScale: {x: 2.5, y: 0.1, z: 5.5}
+  m_LocalPosition: {x: 2.86214, y: -0.95, z: 16.88}
+  m_LocalScale: {x: 18.43214, y: 1.9546, z: 16.141474}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1828669585}
@@ -9042,11 +9040,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f08a27be0e805e142976aba3e69641c1, type: 3}
   m_PrefabInstance: {fileID: 1363711816}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1363711818 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f08a27be0e805e142976aba3e69641c1, type: 3}
-  m_PrefabInstance: {fileID: 1363711816}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1364076762
 GameObject:
   m_ObjectHideFlags: 0
@@ -9072,7 +9065,7 @@ Transform:
   m_GameObject: {fileID: 1364076762}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 2.4, y: 0, z: 21.9}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -9714,9 +9707,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1577727077}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.00089715724, y: 0.7067991, z: -0.0007494214, w: 0.70741343}
-  m_LocalPosition: {x: 12.17, y: -0.14, z: 23.14}
-  m_LocalScale: {x: 15.595936, y: 1, z: 1}
+  m_LocalRotation: {x: 0.0008950728, y: 0.70679766, z: -0.00074626063, w: 0.70741487}
+  m_LocalPosition: {x: 12.17, y: -0.15, z: 20.5}
+  m_LocalScale: {x: 20, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1122863951}
@@ -10131,6 +10124,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1683282422}
   - component: {fileID: 1683282423}
+  - component: {fileID: 1683282424}
   m_Layer: 0
   m_Name: Door2
   m_TagString: Untagged
@@ -10167,13 +10161,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5543bf8df1625da47a9174d648e4ed62, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Door
-  startLocked: 1
-  colliderObjects:
-  - {fileID: 465312951}
-  doorVisual: {fileID: 1363711818}
   disappearDuration: 1
   smokeColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
   openSound: {fileID: 0}
+  passageScanCenter: {x: 3.49, y: 1, z: 29.92}
+  passageScanHalfExtents: {x: 3, y: 2, z: 2}
+--- !u!65 &1683282424
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683282421}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.75, y: 3.14, z: 0.35}
+  m_Center: {x: 0, y: 1.57, z: 0}
 --- !u!1001 &1691617725
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10321,6 +10334,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1716934864}
   - component: {fileID: 1716934865}
+  - component: {fileID: 1716934866}
   m_Layer: 0
   m_Name: Door
   m_TagString: Untagged
@@ -10357,13 +10371,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5543bf8df1625da47a9174d648e4ed62, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Door
-  startLocked: 1
-  colliderObjects:
-  - {fileID: 1732524859}
-  doorVisual: {fileID: 1803460784}
   disappearDuration: 1
   smokeColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
   openSound: {fileID: 0}
+  passageScanCenter: {x: 3.49, y: 1, z: 8.93}
+  passageScanHalfExtents: {x: 3, y: 2, z: 2}
+--- !u!65 &1716934866
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1716934863}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.75, y: 3.14, z: 0.35}
+  m_Center: {x: 0, y: 1.57, z: 0}
 --- !u!1 &1732524859
 GameObject:
   m_ObjectHideFlags: 0
@@ -10413,7 +10446,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -10631,9 +10664,9 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1798442941}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.00089715724, y: 0.7067991, z: -0.0007494214, w: 0.70741343}
-  m_LocalPosition: {x: -6.9, y: -0.15, z: 23.11}
-  m_LocalScale: {x: 15.712983, y: 1, z: 1}
+  m_LocalRotation: {x: 0.0008950728, y: 0.70679766, z: -0.00074626063, w: 0.70741487}
+  m_LocalPosition: {x: -6.9, y: -0.15, z: 20.5}
+  m_LocalScale: {x: 20, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1122863951}
@@ -10776,11 +10809,6 @@ PrefabInstance:
 --- !u!4 &1803460783 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f08a27be0e805e142976aba3e69641c1, type: 3}
-  m_PrefabInstance: {fileID: 1803460782}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &1803460784 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f08a27be0e805e142976aba3e69641c1, type: 3}
   m_PrefabInstance: {fileID: 1803460782}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1828669584

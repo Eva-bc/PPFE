@@ -2,23 +2,18 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// Represents a door that can be locked or unlocked.
-/// When locked  : the collider blocks the passage and the visual is visible.
-/// When unlocked: ALL child colliders are disabled immediately (synchronous, same frame),
-///               then a smoke + fade-out plays, and the entire GameObject is destroyed.
+/// A door that physically blocks a passage via a single BoxCollider on this GameObject.
+/// The door is the ONLY blocking element. No lock system, no entry control.
+///
+/// When Unlock() is called:
+///   1. BoxCollider is disabled immediately (passage is free this physics frame).
+///   2. A smoke + fade-out effect plays over <disappearDuration> seconds.
+///   3. The entire GameObject is destroyed.
+///   4. The passage is scanned and the number of remaining solid colliders is logged.
 /// </summary>
+[RequireComponent(typeof(BoxCollider))]
 public class Door : MonoBehaviour
 {
-    [Header("State")]
-    [SerializeField] private bool startLocked = true;
-
-    [Header("References")]
-    [Tooltip("Child GameObjects that physically block the passage. Each is SetActive(false) synchronously on Unlock.")]
-    [SerializeField] private GameObject[] colliderObjects;
-
-    [Tooltip("The child GameObject that holds the door mesh.")]
-    [SerializeField] private GameObject doorVisual;
-
     [Header("Disappear Effect")]
     [Tooltip("Total duration of the smoke + fade-out animation in seconds.")]
     [SerializeField] private float disappearDuration = 1.0f;
@@ -30,37 +25,42 @@ public class Door : MonoBehaviour
     [Tooltip("AudioClip played when the door disappears.")]
     [SerializeField] private AudioClip openSound;
 
-    private bool isLocked;
+    [Header("Debug — Passage Verification")]
+    [Tooltip("World-space centre of the passage zone used to count colliders after destruction.")]
+    [SerializeField] private Vector3 passageScanCenter;
+    [Tooltip("Half-extents of the passage scan box.")]
+    [SerializeField] private Vector3 passageScanHalfExtents = new Vector3(3f, 2f, 2f);
+
+    private BoxCollider doorCollider;
     private AudioSource audioSource;
+    private bool isUnlocking;
 
     private void Awake()
     {
+        doorCollider = GetComponent<BoxCollider>();
+        doorCollider.isTrigger = false;
+
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.playOnAwake = false;
         audioSource.spatialBlend = 1f;
 
-        isLocked = startLocked;
-        ApplyStateInstant();
-    }
-
-    /// <summary>Locks the door: re-enables collider objects and shows the visual.</summary>
-    public void Lock()
-    {
-        isLocked = true;
-        ApplyStateInstant();
+        // Default scan center to the door's own position.
+        if (passageScanCenter == Vector3.zero)
+            passageScanCenter = transform.position;
     }
 
     /// <summary>
-    /// Unlocks the door. Disables ALL collision objects synchronously this frame,
-    /// then plays the visual disappear effect before destroying the entire GameObject.
+    /// Disables the BoxCollider immediately (passage is free this frame),
+    /// plays the disappear effect, destroys this GameObject, then logs
+    /// how many solid colliders remain in the passage.
     /// </summary>
     public void Unlock()
     {
-        if (!isLocked) return;
-        isLocked = false;
+        if (isUnlocking) return;
+        isUnlocking = true;
 
-        // Disable every collision immediately — synchronous, takes effect this frame.
-        DisableAllCollisionsNow();
+        // Immediately free the passage — takes effect this physics step.
+        doorCollider.enabled = false;
 
         if (openSound != null)
             audioSource.PlayOneShot(openSound);
@@ -68,77 +68,26 @@ public class Door : MonoBehaviour
         StartCoroutine(DisappearRoutine());
     }
 
-    /// <summary>Whether the door is currently locked.</summary>
-    public bool IsLocked => isLocked;
-
-    // ── Private ────────────────────────────────────────────────────────────────
-
-    private void ApplyStateInstant()
-    {
-        SetColliderObjectsActive(isLocked);
-
-        if (doorVisual != null)
-            doorVisual.SetActive(isLocked);
-    }
-
-    /// <summary>
-    /// Synchronously disables every blocking GameObject and every Collider
-    /// found anywhere in this door's hierarchy. SetActive(false) is immediate.
-    /// </summary>
-    private void DisableAllCollisionsNow()
-    {
-        // Disable explicitly referenced blocking GameObjects.
-        if (colliderObjects != null)
-        {
-            foreach (GameObject go in colliderObjects)
-            {
-                if (go == null) continue;
-                go.SetActive(false);
-                Debug.Log($"[Door] Disabled collider object '{go.name}'");
-            }
-        }
-
-        // Safety sweep: disable every Collider component on this door and all children,
-        // including any that are inside the FBX sub-hierarchy or not in colliderObjects.
-        foreach (Collider col in GetComponentsInChildren<Collider>(true))
-        {
-            col.enabled = false;
-            Debug.Log($"[Door] Disabled residual collider on '{col.gameObject.name}'");
-        }
-
-        Debug.Log("[Door] All collisions disabled.");
-    }
-
-    private void SetColliderObjectsActive(bool active)
-    {
-        if (colliderObjects == null) return;
-        foreach (GameObject go in colliderObjects)
-            if (go != null) go.SetActive(active);
-    }
+    // ── Private ──────────────────────────────────────────────────────────────
 
     private IEnumerator DisappearRoutine()
     {
-        // Ensure visual is visible before we start fading.
-        if (doorVisual != null)
-            doorVisual.SetActive(true);
-
         SpawnSmoke();
 
-        // Collect all renderers once before the loop.
-        Renderer[] renderers = doorVisual != null
-            ? doorVisual.GetComponentsInChildren<Renderer>(true)
-            : System.Array.Empty<Renderer>();
+        // Grab all renderers on this door and its children.
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
 
-        // Create instance materials that support alpha fade.
-        Material[][] fadeMaterials = new Material[renderers.Length][];
+        // Create per-renderer instance materials set to transparent mode.
+        Material[][] fadeMats = new Material[renderers.Length][];
         for (int i = 0; i < renderers.Length; i++)
         {
-            fadeMaterials[i] = new Material[renderers[i].sharedMaterials.Length];
-            for (int j = 0; j < fadeMaterials[i].Length; j++)
-                fadeMaterials[i][j] = MakeTransparentCopy(renderers[i].sharedMaterials[j]);
-            renderers[i].materials = fadeMaterials[i];
+            fadeMats[i] = new Material[renderers[i].sharedMaterials.Length];
+            for (int j = 0; j < fadeMats[i].Length; j++)
+                fadeMats[i][j] = MakeTransparentCopy(renderers[i].sharedMaterials[j]);
+            renderers[i].materials = fadeMats[i];
         }
 
+        // Fade out alpha over the disappear duration.
         float elapsed = 0f;
         while (elapsed < disappearDuration)
         {
@@ -155,21 +104,35 @@ public class Door : MonoBehaviour
             yield return null;
         }
 
-        // Destroy the entire door GameObject — visuals, scripts, and any surviving colliders.
-        Debug.Log($"[Door] Destroying door GameObject '{gameObject.name}'");
+        // Destroy the entire GameObject — mesh, collider, scripts, everything.
         Destroy(gameObject);
+        Debug.Log("[Door] Door destroyed.");
+
+        // Wait one frame so physics registers the destruction, then verify.
+        yield return null;
+        VerifyPassage();
     }
 
-    // ── Smoke VFX ─────────────────────────────────────────────────────────────
+    private void VerifyPassage()
+    {
+        Collider[] hits = Physics.OverlapBox(
+            passageScanCenter,
+            passageScanHalfExtents,
+            Quaternion.identity,
+            Physics.AllLayers,
+            QueryTriggerInteraction.Ignore);
+
+        Debug.Log($"[Door] Colliders remaining in passage after destruction: {hits.Length}");
+        foreach (Collider col in hits)
+            Debug.Log($"[Door]   -> '{col.gameObject.name}' ({col.GetType().Name}) at {col.bounds.center}", col.gameObject);
+    }
+
+    // ── Smoke VFX ────────────────────────────────────────────────────────────
 
     private void SpawnSmoke()
     {
-        Vector3 center = doorVisual != null
-            ? doorVisual.transform.position + Vector3.up * 1.5f
-            : transform.position + Vector3.up * 1.5f;
-
         GameObject go = new GameObject("DoorSmoke");
-        go.transform.position = center;
+        go.transform.position = transform.position + Vector3.up * 1.5f;
 
         ParticleSystem ps = go.AddComponent<ParticleSystem>();
         ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
