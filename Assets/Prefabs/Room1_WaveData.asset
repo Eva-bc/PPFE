@@ -16,4 +16,4 @@ MonoBehaviour:
   - prefab: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
     count: 2
   spawnDelay: 1.5
-  spawnInterval: 0.4
+  spawnInterval: 1.5

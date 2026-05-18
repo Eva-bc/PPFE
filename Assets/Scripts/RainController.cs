@@ -1,307 +1,203 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Manages the exterior rain particle system and associated audio.
-/// The rain GameObject follows the player horizontally so particles are always
-/// generated just above the player's visible area without wasting budget on
-/// off-screen zones.
+/// Manages an exterior rain particle system with interior occlusion.
 ///
-/// Interior detection relies on InteriorZone triggers: each room should have
-/// one. A counter tracks how many interior zones the player is currently inside
-/// so that overlapping zones are handled correctly.
+/// Design:
+///   - A single ParticleSystem emits rain from a large box high above the scene.
+///   - Particle collision (lifetimeLoss = 1) destroys drops the instant they
+///     hit any physics collider (rooftops act as shields).
+///   - InteriorZone trigger volumes (one per room) report when the player is
+///     indoors.  While at least one zone contains the player the rain emitter
+///     is disabled and the audio crossfades to a quiet muffled level.
+///   - The audio fades smoothly between outdoor and indoor volumes.
 /// </summary>
+[RequireComponent(typeof(AudioSource))]
 public class RainController : MonoBehaviour
 {
-    // -----------------------------------------------------------------------
-    // Singleton
-    // -----------------------------------------------------------------------
-
+    // ── Singleton ────────────────────────────────────────────────────────────
     public static RainController Instance { get; private set; }
 
-    // -----------------------------------------------------------------------
-    // Inspector
-    // -----------------------------------------------------------------------
+    // ── Inspector ────────────────────────────────────────────────────────────
+    [Header("Emitter Shape")]
+    [Tooltip("World-space center of the rain emission box.")]
+    [SerializeField] private Vector3 emitterCenter = new Vector3(0f, 15f, 25f);
 
-    [Header("References")]
-    [Tooltip("The Player Transform the rain follows.")]
-    [SerializeField] private Transform playerTransform;
-
-    [Tooltip("The rain ParticleSystem. Created procedurally if left empty.")]
-    [SerializeField] private ParticleSystem rainParticleSystem;
-
-    [Tooltip("Optional splash ParticleSystem that plays at ground level.")]
-    [SerializeField] private ParticleSystem splashParticleSystem;
-
-    [Header("Follow Settings")]
-    [Tooltip("Height above the scene's ground at which rain particles are emitted.")]
-    [SerializeField] private float emitterHeight = 12f;
-
-    [Tooltip("Half-width (X and Z) of the emitter box. Keep it just larger than the camera view.")]
-    [SerializeField] private float emitterHalfExtent = 14f;
+    [Tooltip("Size of the emission box in world units (X, Y=thickness, Z).")]
+    [SerializeField] private Vector3 emitterSize = new Vector3(80f, 1f, 100f);
 
     [Header("Rain Particles")]
-    [Tooltip("Maximum number of simultaneous rain particles.")]
-    [SerializeField] private int maxParticles = 600;
+    [SerializeField] private int   maxParticles   = 2000;
+    [SerializeField] private float emissionRate   = 400f;
+    [SerializeField] private float startSpeed     = 18f;
+    [SerializeField] private float startLifetime  = 2.5f;
 
-    [Tooltip("How many rain drops are emitted per second.")]
-    [SerializeField] private float emissionRate = 280f;
-
-    [Tooltip("Rain drop fall speed (units/second).")]
-    [SerializeField] private float rainSpeed = 18f;
-
-    [Tooltip("Lifetime of each rain particle (seconds). Should cover emitterHeight / rainSpeed.")]
-    [SerializeField] private float particleLifetime = 1.2f;
-
-    [Tooltip("Scale of each rain streak particle.")]
-    [SerializeField] private float particleSize = 0.08f;
+    [Tooltip("Slight angle to simulate wind-driven rain (degrees around X axis).")]
+    [SerializeField] private float windAngleDeg   = 8f;
 
     [Header("Audio")]
-    [Tooltip("AudioClip of looping rain sound.")]
-    [SerializeField] private AudioClip rainAudioClip;
+    [SerializeField] private AudioClip rainAmbientClip;
+    [SerializeField] [Range(0f, 1f)] private float outdoorVolume = 0.7f;
+    [SerializeField] [Range(0f, 1f)] private float indoorVolume  = 0.08f;
+    [SerializeField] private float audioFadeDuration = 1.5f;
 
-    [Tooltip("Volume when fully outside.")]
-    [SerializeField] private float exteriorVolume = 0.55f;
+    // ── Private state ─────────────────────────────────────────────────────────
+    private ParticleSystem _rain;
+    private AudioSource    _audio;
+    private int            _interiorCount = 0;   // how many zones currently contain the player
+    private bool           _isIndoors     = false;
+    private Coroutine      _fadeCoroutine;
 
-    [Tooltip("Volume when inside a room (muffled effect, set to 0 for silence).")]
-    [SerializeField] private float interiorVolume = 0.06f;
-
-    [Tooltip("How many seconds the audio fade takes when entering/leaving a room.")]
-    [SerializeField] private float audioFadeDuration = 1.2f;
-
-    // -----------------------------------------------------------------------
-    // Runtime state
-    // -----------------------------------------------------------------------
-
-    private int interiorZoneCount;   // number of interior zones the player is inside
-    private bool isInsideInterior;
-
-    private AudioSource audioSource;
-    private Coroutine audioFadeCoroutine;
-
-    // -----------------------------------------------------------------------
-    // Unity lifecycle
-    // -----------------------------------------------------------------------
-
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
     private void Awake()
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
-        SetupAudioSource();
-
-        if (rainParticleSystem == null)
-            rainParticleSystem = BuildRainParticleSystem();
-
-        if (splashParticleSystem != null)
-            ConfigureSplashSystem();
-
-        // Start outside by default
-        isInsideInterior = false;
-        SetRainActive(true);
-        audioSource.volume = exteriorVolume;
+        _audio = GetComponent<AudioSource>();
+        BuildRainParticleSystem();
+        ConfigureAudio();
     }
 
-    private void LateUpdate()
+    private void Start()
     {
-        if (playerTransform == null) return;
+        // Start outdoors by default
+        _audio.volume = outdoorVolume;
+    }
 
-        // Keep the emitter directly above the player at the configured height.
-        Vector3 pos = playerTransform.position;
-        pos.y = emitterHeight;
-        transform.position = pos;
+    // ── Public API (called by InteriorZone) ───────────────────────────────────
 
-        // Keep splash system at ground level
-        if (splashParticleSystem != null)
+    /// <summary>Called when the player enters an interior zone.</summary>
+    public void OnPlayerEnteredInterior(InteriorZone zone)
+    {
+        _interiorCount++;
+        if (_interiorCount == 1)
+            SetIndoors(true);
+    }
+
+    /// <summary>Called when the player exits an interior zone.</summary>
+    public void OnPlayerExitedInterior(InteriorZone zone)
+    {
+        _interiorCount = Mathf.Max(0, _interiorCount - 1);
+        if (_interiorCount == 0)
+            SetIndoors(false);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private void SetIndoors(bool indoors)
+    {
+        if (_isIndoors == indoors) return;
+        _isIndoors = indoors;
+
+        // Toggle emitter
+        if (_rain != null)
         {
-            Vector3 splashPos = playerTransform.position;
-            splashPos.y = 0f;
-            splashParticleSystem.transform.position = splashPos;
+            if (indoors) _rain.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            else         _rain.Play();
         }
+
+        // Crossfade audio
+        float targetVolume = indoors ? indoorVolume : outdoorVolume;
+        if (_fadeCoroutine != null) StopCoroutine(_fadeCoroutine);
+        _fadeCoroutine = StartCoroutine(FadeAudio(targetVolume));
     }
 
-    // -----------------------------------------------------------------------
-    // Interior zone callbacks (called by InteriorZone)
-    // -----------------------------------------------------------------------
-
-    /// <summary>Called by InteriorZone when the player enters an interior trigger.</summary>
-    public void OnPlayerEnterInterior()
+    private IEnumerator FadeAudio(float target)
     {
-        interiorZoneCount++;
-        if (interiorZoneCount == 1 && !isInsideInterior)
-        {
-            isInsideInterior = true;
-            SetRainActive(false);
-            FadeAudio(interiorVolume);
-        }
-    }
-
-    /// <summary>Called by InteriorZone when the player exits an interior trigger.</summary>
-    public void OnPlayerExitInterior()
-    {
-        interiorZoneCount = Mathf.Max(0, interiorZoneCount - 1);
-        if (interiorZoneCount == 0 && isInsideInterior)
-        {
-            isInsideInterior = false;
-            SetRainActive(true);
-            FadeAudio(exteriorVolume);
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Rain visibility
-    // -----------------------------------------------------------------------
-
-    private void SetRainActive(bool active)
-    {
-        if (rainParticleSystem == null) return;
-
-        var emission = rainParticleSystem.emission;
-        emission.enabled = active;
-
-        if (!active)
-            rainParticleSystem.Clear();
-    }
-
-    // -----------------------------------------------------------------------
-    // Audio
-    // -----------------------------------------------------------------------
-
-    private void SetupAudioSource()
-    {
-        audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.clip = rainAudioClip;
-        audioSource.loop = true;
-        audioSource.spatialBlend = 0f;   // 2D — rain is an ambient layer
-        audioSource.playOnAwake = false;
-        audioSource.volume = 0f;
-
-        if (rainAudioClip != null)
-            audioSource.Play();
-    }
-
-    private void FadeAudio(float targetVolume)
-    {
-        if (audioFadeCoroutine != null)
-            StopCoroutine(audioFadeCoroutine);
-        audioFadeCoroutine = StartCoroutine(FadeAudioCoroutine(targetVolume));
-    }
-
-    private IEnumerator FadeAudioCoroutine(float targetVolume)
-    {
-        float startVolume = audioSource.volume;
+        float start   = _audio.volume;
         float elapsed = 0f;
-
         while (elapsed < audioFadeDuration)
         {
-            elapsed += Time.deltaTime;
-            audioSource.volume = Mathf.Lerp(startVolume, targetVolume, elapsed / audioFadeDuration);
+            elapsed      += Time.deltaTime;
+            _audio.volume = Mathf.Lerp(start, target, elapsed / audioFadeDuration);
             yield return null;
         }
-
-        audioSource.volume = targetVolume;
-        audioFadeCoroutine = null;
+        _audio.volume = target;
     }
 
-    // -----------------------------------------------------------------------
-    // Procedural ParticleSystem construction
-    // -----------------------------------------------------------------------
-
-    private ParticleSystem BuildRainParticleSystem()
+    private void ConfigureAudio()
     {
-        GameObject rainGO = new GameObject("RainParticles");
-        rainGO.transform.SetParent(transform);
-        rainGO.transform.localPosition = Vector3.zero;
+        _audio.clip        = rainAmbientClip;
+        _audio.loop        = true;
+        _audio.playOnAwake = false;
+        _audio.spatialBlend = 0f;   // 2D — rain is ambient, not positional
+        _audio.volume      = outdoorVolume;
 
-        ParticleSystem ps = rainGO.AddComponent<ParticleSystem>();
+        if (rainAmbientClip != null)
+            _audio.Play();
+    }
 
-        // Stop the system while we configure it
-        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+    private void BuildRainParticleSystem()
+    {
+        // Create a child GameObject to host the ParticleSystem
+        var go = new GameObject("RainEmitter");
+        go.transform.SetParent(transform, false);
+        go.transform.position = emitterCenter;
+        go.transform.rotation = Quaternion.Euler(windAngleDeg, 0f, 0f);
 
-        // --- Main module ---
-        var main = ps.main;
-        main.loop = true;
-        main.startLifetime = particleLifetime;
-        main.startSpeed = rainSpeed;
-        main.startSize = particleSize;
+        _rain = go.AddComponent<ParticleSystem>();
+
+        // ── Main module ──────────────────────────────────────────────────────
+        var main          = _rain.main;
         main.maxParticles = maxParticles;
+        main.startSpeed   = startSpeed;
+        main.startLifetime = startLifetime;
+        main.startSize    = new ParticleSystem.MinMaxCurve(0.03f, 0.06f);
+        main.startColor   = new Color(0.72f, 0.82f, 0.95f, 0.55f);
+        main.gravityModifier = 1f;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.startColor = new Color(0.72f, 0.82f, 0.95f, 0.55f); // cold blue-white, semi-transparent
 
-        // Gravity multiplier — rain falls straight down
-        main.gravityModifier = 0.15f;
-
-        // --- Emission module ---
-        var emission = ps.emission;
+        // ── Emission ─────────────────────────────────────────────────────────
+        var emission       = _rain.emission;
+        emission.enabled   = true;
         emission.rateOverTime = emissionRate;
 
-        // --- Shape module: flat box emitter just above the scene ---
-        var shape = ps.shape;
-        shape.enabled = true;
-        shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(emitterHalfExtent * 2f, 0.1f, emitterHalfExtent * 2f);
+        // ── Shape (box) ───────────────────────────────────────────────────────
+        var shape          = _rain.shape;
+        shape.enabled      = true;
+        shape.shapeType    = ParticleSystemShapeType.Box;
+        shape.scale        = emitterSize;
 
-        // --- Velocity over lifetime: add slight horizontal drift for realism ---
-        var velocityOverLifetime = ps.velocityOverLifetime;
-        velocityOverLifetime.enabled = true;
-        velocityOverLifetime.space = ParticleSystemSimulationSpace.World;
-        velocityOverLifetime.x = new ParticleSystem.MinMaxCurve(-0.4f, 0.4f);
-        velocityOverLifetime.z = new ParticleSystem.MinMaxCurve(-0.3f, 0.3f);
-
-        // --- Renderer ---
-        ParticleSystemRenderer renderer = rainGO.GetComponent<ParticleSystemRenderer>();
+        // ── Renderer ──────────────────────────────────────────────────────────
+        var renderer       = go.GetComponent<ParticleSystemRenderer>();
         renderer.renderMode = ParticleSystemRenderMode.Stretch;
-        renderer.velocityScale = 0.04f;
-        renderer.lengthScale = 2.5f;
-        renderer.sortingOrder = 1;
+        renderer.velocityScale = 0.08f;
+        renderer.lengthScale   = 1.2f;
 
-        // Use a default particle material if no custom one is assigned
-        Material rainMat = new Material(Shader.Find("Particles/Standard Unlit"));
-        if (rainMat.shader.name == "Hidden/InternalErrorShader")
-        {
-            // Fallback for URP / HDRP projects
-            rainMat = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
-        }
-        rainMat.SetFloat("_Mode", 2f);       // Fade mode
-        rainMat.EnableKeyword("_ALPHABLEND_ON");
-        rainMat.renderQueue = 3000;
-        renderer.material = rainMat;
+        // Use the URP default unlit particle material (alpha-blended)
+        renderer.material = GetOrCreateRainMaterial();
 
-        ps.Play();
-        return ps;
+        // ── Collision (kills drops that hit roofs/walls) ────────────────────
+        var collision         = _rain.collision;
+        collision.enabled     = true;
+        collision.type        = ParticleSystemCollisionType.World;
+        collision.mode        = ParticleSystemCollisionMode.Collision3D;
+        collision.lifetimeLoss = 1f;        // particle dies on first contact
+        collision.bounceMultiplier = 0f;
+        collision.dampen   = 1f;
+        collision.radiusScale = 0.01f;
+        collision.quality  = ParticleSystemCollisionQuality.High;
+        collision.enableDynamicColliders = false;
+
+        _rain.Play();
     }
 
-    private void ConfigureSplashSystem()
+    private static Material GetOrCreateRainMaterial()
     {
-        var main = splashParticleSystem.main;
-        main.startLifetime = 0.3f;
-        main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 1.5f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.15f);
-        main.startColor = new Color(0.7f, 0.8f, 0.95f, 0.4f);
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        // Try to find the URP Particles/Unlit shader
+        var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (shader == null)
+            shader = Shader.Find("Particles/Standard Unlit");
+        if (shader == null)
+            shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
 
-        var emission = splashParticleSystem.emission;
-        emission.rateOverTime = 60f;
-
-        var shape = splashParticleSystem.shape;
-        shape.enabled = true;
-        shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(emitterHalfExtent * 2f, 0.05f, emitterHalfExtent * 2f);
+        var mat = new Material(shader != null ? shader : Shader.Find("Standard"));
+        mat.SetFloat("_Surface", 1f);              // Transparent
+        mat.SetFloat("_Blend", 0f);                // Alpha blend
+        mat.color = new Color(0.75f, 0.85f, 1f, 0.4f);
+        return mat;
     }
-
-    // -----------------------------------------------------------------------
-    // Gizmos (editor only)
-    // -----------------------------------------------------------------------
-
-#if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(0.4f, 0.7f, 1f, 0.3f);
-        Gizmos.DrawCube(transform.position, new Vector3(emitterHalfExtent * 2f, 0.2f, emitterHalfExtent * 2f));
-    }
-#endif
 }

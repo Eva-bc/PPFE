@@ -28,6 +28,14 @@ public class WaveManager : MonoBehaviour
     /// <summary>Fired once when all phases are complete and all ghosts are dead.</summary>
     public event Action OnWaveCleared;
 
+    /// <summary>
+    /// Fired every time a ghost is spawned, passing the total number of ghosts
+    /// spawned so far in this wave (1-based).
+    /// </summary>
+    public event Action<int> OnGhostSpawned;
+
+    private int _totalSpawnedThisWave;
+
     private readonly List<Ghost> activeGhosts = new();
     private int spawnIndex;
     private bool allPhasesSpawned;
@@ -58,6 +66,7 @@ public class WaveManager : MonoBehaviour
         activeGhosts.Clear();
         allPhasesSpawned = false;
         spawnIndex = 0;
+        _totalSpawnedThisWave = 0;
 
         StartCoroutine(SpawnRoutine(roomData));
     }
@@ -120,6 +129,9 @@ public class WaveManager : MonoBehaviour
         GameObject instance = Instantiate(prefab, point.position, point.rotation);
         Ghost ghost = instance.GetComponent<Ghost>();
         activeGhosts.Add(ghost);
+
+        _totalSpawnedThisWave++;
+        OnGhostSpawned?.Invoke(_totalSpawnedThisWave);
 
         ghost.OnHealthChanged += (current, _) =>
         {
