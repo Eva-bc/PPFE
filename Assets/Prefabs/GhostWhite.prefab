@@ -103,6 +103,7 @@ MonoBehaviour:
   lightVulnerability: 1
   saltVulnerability: 1
   moveSpeed: 3
+  grabDamageMultiplier: 1
   separationRadius: 1.5
   separationForce: 2
 --- !u!114 &710861507957383641
