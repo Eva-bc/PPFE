@@ -15,8 +15,10 @@ MonoBehaviour:
   phases:
   - prefab: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
     count: 1
-    delayBefore: 1.5
+    delayBefore: 3
+    waitForPreviousPhase: 0
   - prefab: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
     count: 1
     delayBefore: 4
-  spawnInterval: 0.4
+    waitForPreviousPhase: 0
+  spawnInterval: 1
