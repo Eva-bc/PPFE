@@ -31,9 +31,14 @@ public abstract class Ghost : MonoBehaviour
     [SerializeField] private float separationRadius = 1.5f;
     [SerializeField] private float separationForce  = 2f;
 
+    [Header("Audio")]
+    [Tooltip("Sound played when this ghost dies.")]
+    [SerializeField] private AudioClip deathSound;
+
     private float currentHealth;
     private Rigidbody rigidBody;
     private Transform playerTransform;
+    private AudioSource audioSource;
 
     // Reusable buffer for separation overlap checks — avoids per-frame allocations.
     private readonly Collider[] separationBuffer = new Collider[8];
@@ -73,6 +78,10 @@ public abstract class Ghost : MonoBehaviour
         rigidBody.constraints = RigidbodyConstraints.FreezeRotationX
                               | RigidbodyConstraints.FreezeRotationZ
                               | RigidbodyConstraints.FreezePositionY;
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake  = false;
+        audioSource.spatialBlend = 1f;
 
         GameObject player = GameObject.FindWithTag("Player");
         if (player != null)
@@ -204,6 +213,14 @@ public abstract class Ghost : MonoBehaviour
         // OnDeath() is called first so subclasses can still access GhostDeathVFX
         // before the GameObject is destroyed.
         OnDeath();
+
+        // Detach the AudioSource so the death sound survives the Destroy call.
+        if (deathSound != null && audioSource != null)
+        {
+            audioSource.transform.SetParent(null);
+            Destroy(audioSource.gameObject, deathSound.length + 0.1f);
+        }
+
         Destroy(gameObject);
     }
 
@@ -215,6 +232,9 @@ public abstract class Ghost : MonoBehaviour
     /// <summary>Called just before the ghost is destroyed. Override for VFX, events, etc.</summary>
     protected virtual void OnDeath()
     {
+        if (deathSound != null)
+            audioSource.PlayOneShot(deathSound);
+
         Debug.Log($"[Ghost] {name} died.");
     }
 }

@@ -106,6 +106,7 @@ MonoBehaviour:
   grabDamageMultiplier: 1
   separationRadius: 1.5
   separationForce: 2
+  deathSound: {fileID: 8300000, guid: 3558232333fc2044cb5ee8f7dd738a20, type: 3}
 --- !u!114 &710861507957383641
 MonoBehaviour:
   m_ObjectHideFlags: 0

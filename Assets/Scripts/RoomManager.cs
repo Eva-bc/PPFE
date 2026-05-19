@@ -23,6 +23,13 @@ public class RoomManager : MonoBehaviour
     [Tooltip("Door(s) that open when the key is collected.")]
     [SerializeField] private Door[] exitDoors;
 
+    [Header("Heal Pickup (optional)")]
+    [Tooltip("Prefab of the HealPickup to spawn when all enemies are defeated. Leave empty for rooms without a heal reward.")]
+    [SerializeField] private HealPickup healPickupPrefab;
+
+    [Tooltip("World position where the heal pickup will appear. Defaults to the RoomManager's position if left empty.")]
+    [SerializeField] private Transform healSpawnPoint;
+
     [Header("Key")]
     [Tooltip("Prefab of the RoomKey to spawn when all enemies are defeated.")]
     [SerializeField] private RoomKey keyPrefab;
@@ -168,7 +175,19 @@ public class RoomManager : MonoBehaviour
         if (roomClearUI != null)
             StartCoroutine(ShowRoomClearUI());
 
+        SpawnHealPickup();
         SpawnKey();
+    }
+
+    // --- Heal Pickup ---
+
+    private void SpawnHealPickup()
+    {
+        if (healPickupPrefab == null) return;
+
+        Vector3 spawnPos = healSpawnPoint != null ? healSpawnPoint.position : transform.position;
+        Instantiate(healPickupPrefab, spawnPos, Quaternion.identity);
+        Debug.Log($"[RoomManager] Heal pickup spawned in '{name}'.");
     }
 
     // --- Key ---

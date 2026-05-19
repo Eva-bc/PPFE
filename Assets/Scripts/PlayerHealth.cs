@@ -35,6 +35,19 @@ public class PlayerHealth : MonoBehaviour
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
+    /// <summary>Restores HP to the player, clamped to maxHealth. Ignored if dead.</summary>
+    /// <param name="amount">Amount of HP to restore (must be positive). Pass Mathf.Infinity to fully restore.</param>
+    public void Heal(float amount)
+    {
+        if (IsDead) return;
+
+        currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
+
+        Debug.Log($"[PlayerHealth] Heal({amount:F1}) -> {currentHealth:F1}/{maxHealth:F1}");
+
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+    }
+
     /// <summary>Applies damage to the player. Ignored if already dead.</summary>
     /// <param name="amount">Raw damage amount (must be positive).</param>
     public void TakeDamage(float amount)
@@ -55,6 +68,5 @@ public class PlayerHealth : MonoBehaviour
     {
         Debug.Log("[PlayerHealth] Player died.");
         OnDeath?.Invoke();
-        gameObject.SetActive(false);
     }
 }

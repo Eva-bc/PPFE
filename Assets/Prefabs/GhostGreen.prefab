@@ -277,6 +277,7 @@ MonoBehaviour:
   grabDamageMultiplier: 1
   separationRadius: 1.5
   separationForce: 2
+  deathSound: {fileID: 8300000, guid: 3558232333fc2044cb5ee8f7dd738a20, type: 3}
 --- !u!224 &8010379840150756367 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 5137697763924339929, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}

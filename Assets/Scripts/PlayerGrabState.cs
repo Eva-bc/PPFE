@@ -34,6 +34,12 @@ public class PlayerGrabState : MonoBehaviour
     [SerializeField] private float repulsionDuration = 1.2f; // seconds ghosts can't move after repulsion
     [SerializeField] private float regrabCooldown    = 2f;   // seconds before a ghost can grab again
 
+    [Header("Audio")]
+    [Tooltip("Sound played when the player is grabbed by a ghost.")]
+    [SerializeField] private AudioClip grabSound;
+
+    private AudioSource audioSource;
+
     // --- Events ---
     /// <summary>Fired when the player is grabbed. Passes the total clicks required.</summary>
     public event Action<int> OnGrabbed;
@@ -66,6 +72,10 @@ public class PlayerGrabState : MonoBehaviour
     private void Awake()
     {
         playerHealth = GetComponent<PlayerHealth>();
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake  = false;
+        audioSource.spatialBlend = 0f;
     }
 
     private void Update()
@@ -118,6 +128,10 @@ public class PlayerGrabState : MonoBehaviour
         grabDuration  = 0f;
 
         ResetClicks();
+
+        if (grabSound != null)
+            audioSource.PlayOneShot(grabSound);
+
         Debug.Log($"[PlayerGrabState] Grabbed by {ghost.name}.");
         OnGrabbed?.Invoke(clicksRequired);
     }

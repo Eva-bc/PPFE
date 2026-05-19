@@ -16,10 +16,13 @@ MonoBehaviour:
   - prefab: {fileID: 5675618606848251972, guid: 6fdbdc64cdf7e944d8695f25b8a00948, type: 3}
     count: 4
     delayBefore: 1.5
-  - prefab: {fileID: 7396471817410193554, guid: 91194d229867e794aba7959be02c56b8, type: 3}
-    count: 4
-    delayBefore: 5
+    waitForPreviousPhase: 0
   - prefab: {fileID: 3606582935961119612, guid: 65e19b58adcee88418c717ea0a172867, type: 3}
     count: 3
-    delayBefore: 5
+    delayBefore: 8
+    waitForPreviousPhase: 0
+  - prefab: {fileID: 7396471817410193554, guid: 91194d229867e794aba7959be02c56b8, type: 3}
+    count: 4
+    delayBefore: 8
+    waitForPreviousPhase: 0
   spawnInterval: 0.4

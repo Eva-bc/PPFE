@@ -2,7 +2,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Handles top-down player movement (ZQSD / AZERTY) and smooth mouse-based rotation.
+/// Handles top-down player movement (ZQSD / AZERTY), smooth mouse-based rotation,
+/// and drives the Animator with a "Speed" float parameter for Idle/Walk blending.
 /// Requires a Rigidbody. Constraints are applied automatically in Awake.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
@@ -17,6 +18,12 @@ public class PlayerController : MonoBehaviour
     [Header("Rotation")]
     // Controls how fast the player rotates toward the mouse (higher = snappier).
     [SerializeField] private float rotationSmoothSpeed = 20f;
+
+    [Header("Animation")]
+    // Animator on the Visual child GameObject (set in Inspector).
+    [SerializeField] private Animator characterAnimator;
+
+    private static readonly int SpeedHash = Animator.StringToHash("Speed");
 
     private Rigidbody rigidBody;
     private Camera mainCamera;
@@ -59,11 +66,22 @@ public class PlayerController : MonoBehaviour
         {
             smoothedVelocity = Vector3.zero;
             rigidBody.linearVelocity = Vector3.zero;
+            UpdateAnimator(0f);
             return;
         }
 
         ApplyMovement();
         ApplyRotation();
+        UpdateAnimator(smoothedVelocity.magnitude);
+    }
+
+    // --- Animation ---
+
+    /// <summary>Pushes the current movement speed to the Animator's Speed parameter.</summary>
+    private void UpdateAnimator(float speed)
+    {
+        if (characterAnimator == null) return;
+        characterAnimator.SetFloat(SpeedHash, speed);
     }
 
     // --- Input Reading ---

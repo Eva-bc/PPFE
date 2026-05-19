@@ -23,10 +23,6 @@ public class HelpOverlayManager : MonoBehaviour
 
     private void Start()
     {
-        helpButton.onClick.AddListener(OpenOverlay);
-        nextButton.onClick.AddListener(ShowNextImage);
-        closeButton.onClick.AddListener(CloseOverlay);
-
         overlayRoot.SetActive(false);
     }
 
@@ -34,6 +30,9 @@ public class HelpOverlayManager : MonoBehaviour
     public void OpenOverlay()
     {
         if (helpSprites == null || helpSprites.Length == 0) return;
+
+        for (int i = 0; i < helpSprites.Length; i++)
+            Debug.Log($"[HelpOverlay] helpSprites[{i}] = {(helpSprites[i] != null ? helpSprites[i].name : "NULL")}");
 
         currentIndex = 0;
         ShowCurrentImage();

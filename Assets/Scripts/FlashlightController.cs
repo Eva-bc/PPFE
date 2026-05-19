@@ -23,6 +23,18 @@ public class FlashlightController : MonoBehaviour
     [Header("Gizmo")]
     [SerializeField] private int gizmoArcSegments = 20;
 
+    [Header("Audio")]
+    [Tooltip("Sound played when the flashlight is turned on.")]
+    [SerializeField] private AudioClip lightOnSound;
+
+    [Tooltip("Sound played when the flashlight is turned off.")]
+    [SerializeField] private AudioClip lightOffSound;
+
+    [Tooltip("Sound played when the UV gauge is fully recharged.")]
+    [SerializeField] private AudioClip lightRechargeSound;
+
+    private AudioSource audioSource;
+
     private const int MaxOverlapResults = 16;
     private readonly Collider[] overlapResults = new Collider[MaxOverlapResults];
 
@@ -66,6 +78,10 @@ public class FlashlightController : MonoBehaviour
         mainCamera = Camera.main;
         aimDirection = transform.forward;
         grabState = GetComponent<PlayerGrabState>();
+
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake  = false;
+        audioSource.spatialBlend = 0f;
     }
 
     private void Update()
@@ -89,12 +105,23 @@ public class FlashlightController : MonoBehaviour
         bool isGrabbed = grabState != null && grabState.IsGrabbed;
         if (isGrabbed)
         {
-            IsActive = false;
+            if (IsActive)
+            {
+                IsActive = false;
+                if (lightOffSound != null) audioSource.PlayOneShot(lightOffSound);
+            }
             return;
         }
 
+        bool wasActive = IsActive;
+
         // Normal flashlight: held click (only when UV is not active).
         IsActive = mouse.leftButton.isPressed && !IsUVActive;
+
+        if (IsActive && !wasActive && lightOnSound != null)
+            audioSource.PlayOneShot(lightOnSound);
+        else if (!IsActive && wasActive && lightOffSound != null)
+            audioSource.PlayOneShot(lightOffSound);
 
         // Double-click detection for UV mode.
         if (mouse.leftButton.wasPressedThisFrame)
@@ -148,7 +175,12 @@ public class FlashlightController : MonoBehaviour
         }
         else if (uvCooldownRemaining > 0f)
         {
+            float previous = uvCooldownRemaining;
             uvCooldownRemaining -= Time.deltaTime;
+
+            // Fire recharge sound exactly once when cooldown hits zero.
+            if (previous > 0f && uvCooldownRemaining <= 0f && lightRechargeSound != null)
+                audioSource.PlayOneShot(lightRechargeSound);
         }
     }
 

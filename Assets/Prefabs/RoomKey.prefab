@@ -67,7 +67,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b08c11cd25db2924088fae65c89aec06, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RoomKey
-  collectSound: {fileID: 0}
+  collectSound: {fileID: 8300000, guid: c2717c278e56bf1479bda40a1eee45c5, type: 3}
   collectVFX: {fileID: 0}
   rotationSpeed: 90
   bobAmplitude: 0.15

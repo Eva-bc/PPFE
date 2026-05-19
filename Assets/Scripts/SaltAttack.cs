@@ -20,6 +20,10 @@ public class SaltAttack : MonoBehaviour
     [Header("Visual Effects")]
     [SerializeField] private SaltParticleEffect saltParticleEffect;
 
+    [Header("Audio")]
+    [Tooltip("Sound played when the salt attack is triggered.")]
+    [SerializeField] private AudioClip attackSound;
+
     // Normalized value 0-1 readable by a future UI gauge.
     public float CooldownProgress => 1f - Mathf.Clamp01(cooldownRemaining / cooldown);
     public bool IsReady => cooldownRemaining <= 0f;
@@ -28,6 +32,14 @@ public class SaltAttack : MonoBehaviour
     private readonly Collider[] overlapResults = new Collider[MaxOverlapResults];
 
     private float cooldownRemaining;
+    private AudioSource audioSource;
+
+    private void Awake()
+    {
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake  = false;
+        audioSource.spatialBlend = 0f;
+    }
 
     private void Update()
     {
@@ -56,6 +68,9 @@ public class SaltAttack : MonoBehaviour
     private void PerformAttack()
     {
         saltParticleEffect?.Play();
+
+        if (attackSound != null)
+            audioSource.PlayOneShot(attackSound, 0.15f);
 
         int count = Physics.OverlapSphereNonAlloc(
             transform.position, radius, overlapResults, ghostLayerMask, QueryTriggerInteraction.Collide);
